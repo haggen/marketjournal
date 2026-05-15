@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+    --font-serif: "Montagu Slab", serif;
+}
+
+@layer base {
+    :root {
+        @apply bg-mist-800 text-amber-100 font-serif;
+    }
+}
