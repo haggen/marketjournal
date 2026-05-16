@@ -1,4 +1,11 @@
-import { useEffect, useReducer, useRef, type SubmitEvent } from "react";
+import {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  useMemo,
+  type SubmitEvent,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   addEntry,
@@ -6,6 +13,7 @@ import {
   deleteItem,
   deleteLocation,
   getInitialData,
+  migrate,
   type Data,
   type Entry,
 } from "@/lib/data";
@@ -13,6 +21,18 @@ import { mutated } from "@/lib/mutated";
 import * as Table from "@/components/Table";
 import { Input } from "@/components/Input";
 import { Header } from "./components/Header";
+
+const fmt = {
+  number: (n: number) => new Intl.NumberFormat().format(n),
+};
+
+function getIndexEntry(data: Data, key: string) {
+  const entry = data.index[key];
+  if (!entry) {
+    throw new Error(`Index entry for ${key} is missing`);
+  }
+  return entry;
+}
 
 const root = document.getElementById("root");
 
@@ -55,6 +75,7 @@ function reducer(data: Data, action: Action) {
 function App() {
   const [data, dispatch] = useReducer(reducer, null, getInitialData);
   const formRef = useRef<HTMLFormElement>(null);
+  const [filterQuery, setFilterQuery] = useState("");
 
   useEffect(() => {
     localStorage.setItem("data", JSON.stringify(data));
@@ -71,18 +92,22 @@ function App() {
     dispatch({ type: "add", payload: { location, item, price, timestamp } });
   };
 
-  const getLargestDelta = (item: string) => {
-    const locations = data.index[item]?.locations;
-    if (!locations) return 0;
-    return Math.max(
-      0,
-      ...Object.values(locations).map((l) => Math.abs(l.delta)),
-    );
-  };
+  const sortedItems = useMemo(() => {
+    const getLargestDelta = (item: string) => {
+      let maxDelta = 0;
+      for (const loc of data.locations) {
+        const locItem = data.index[`${item}-${loc}`];
+        if (locItem) {
+          maxDelta = Math.max(maxDelta, Math.abs(locItem.delta));
+        }
+      }
+      return maxDelta;
+    };
 
-  const sortedItems = data.items.sort((a, b) => {
-    return getLargestDelta(b) - getLargestDelta(a);
-  });
+    return [...data.items]
+      .filter((item) => item.toLowerCase().includes(filterQuery.toLowerCase()))
+      .sort((a, b) => getLargestDelta(b) - getLargestDelta(a));
+  }, [data.items, data.locations, data.index, filterQuery]);
 
   const quickEdit = (entry: {
     location: string;
@@ -112,7 +137,9 @@ function App() {
 
   const onLoad = () => {
     navigator.clipboard.readText().then((src) => {
-      dispatch({ type: "load", payload: JSON.parse(src) as Data });
+      const parsed = JSON.parse(src);
+      migrate(parsed);
+      dispatch({ type: "load", payload: parsed as Data });
     });
   };
 
@@ -162,7 +189,7 @@ function App() {
           </label>
           <button
             type="submit"
-            className="px-4 py-1 bg-yellow-600 border border-dashed border-olive-600 font-medium"
+            className="px-4 py-1 bg-yellow-600 border border-dashed border-yellow-600 bg-clip-padding font-medium hover:bg-amber-400 hover:border-amber-400"
           >
             Save price
           </button>
@@ -186,22 +213,28 @@ function App() {
       <div className="-m-2">
         <table className="table-fixed border-separate w-full border-spacing-2">
           <colgroup>
-            <col />
+            <col className="group/col" />
           </colgroup>
           <thead>
             <tr>
-              <th
-                className="text-left px-4 py-1 bg-mist-700 border border-dashed border-mist-800"
+              <Table.Header
+                className="text-left bg-mist-700 border-mist-700"
                 rowSpan={2}
               >
-                Item
-              </th>
-              <th
-                className="px-4 py-1 bg-mist-700 border border-dashed border-mist-800"
+                <input
+                  type="search"
+                  placeholder="Everything"
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none w-full p-0 m-0 font-inherit text-inherit placeholder-inherit focus:ring-0"
+                />
+              </Table.Header>
+              <Table.Header
+                className="bg-mist-700 border-mist-700"
                 colSpan={Math.max(1, data.locations.length)}
               >
                 Price
-              </th>
+              </Table.Header>
             </tr>
             <tr>
               {data.locations.map((location) => (
@@ -222,8 +255,8 @@ function App() {
           </thead>
           <tbody>
             {sortedItems.map((item) => (
-              <tr key={item}>
-                <Table.Header className="text-left bg-stone-600 border-stone-600">
+              <tr key={item} className="group">
+                <Table.Header className="text-left bg-stone-600 border-stone-600 group-hover:bg-mauve-600 group-hover:border-mauve-600">
                   <Header
                     onDelete={() =>
                       dispatch({ type: "delete-item", payload: item })
@@ -234,30 +267,30 @@ function App() {
                 </Table.Header>
                 {data.locations.map((location) => (
                   <Table.Cell
-                    className="text-center  bg-mist-900  border-mist-900 hover:bg-mist-900/50 hover:border-mist-900/50"
+                    className="text-center bg-mist-900 border-mist-900 group-hover:bg-mauve-900/60 group-hover:border-mauve-900/60 hover:bg-mauve-900 hover:border-mauve-900"
                     key={`${location}-${item}`}
                     onClick={() =>
                       quickEdit({
                         location,
                         item,
-                        price:
-                          data.index[item]?.locations[location]?.latest ?? 0,
+                        price: data.index[`${item}-${location}`]?.latest ?? 0,
                       })
                     }
                   >
-                    {data.index[item]?.locations?.[location] ? (
+                    {data.index[`${item}-${location}`] ? (
                       <div className="inline-flex items-center gap-2">
-                        {data.index[item].locations[location].latest}
-                        <span
-                          className={
-                            "px-1 border border-dashed border-mist-900 text-xs leading-normal " +
-                            (data.index[item].locations[location].delta >= 0
-                              ? "bg-lime-800 text-lime-100"
-                              : "bg-red-800 text-red-100")
-                          }
-                        >
-                          {data.index[item].locations[location].delta}
-                        </span>
+                        {fmt.number(
+                          getIndexEntry(data, `${item}-${location}`).latest,
+                        )}
+                        {getIndexEntry(data, `${item}-${location}`).delta >
+                          0 && (
+                          <span className="px-1 border border-dashed border-mist-900 text-xs leading-normal bg-lime-800 text-lime-100">
+                            +
+                            {fmt.number(
+                              getIndexEntry(data, `${item}-${location}`).delta,
+                            )}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       "-"

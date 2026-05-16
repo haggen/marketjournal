@@ -10,7 +10,7 @@ export function Header({
       <div className="text-xs">{children}</div>
 
       <button
-        className="cursor-pointer hover:text-red-200 px-2"
+        className="hover:text-orange-300 px-2"
         type="button"
         onClick={() => onDelete()}
       >
