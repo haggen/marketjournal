@@ -310,9 +310,12 @@ function App() {
                               className="px-1 bg-clip-padding border border-dashed border-lime-700 bg-lime-700 text-lime-100 text-xs leading-normal rounded"
                               title="Discount compared to the highest buy price."
                             >
-                              {fmt.number(spread.ask / local.latest.ask, {
-                                style: "percent",
-                              })}
+                              {fmt.number(
+                                (spread.ask / local.latest.ask) * -1,
+                                {
+                                  style: "percent",
+                                },
+                              )}
                             </span>
                           ) : null}
 
