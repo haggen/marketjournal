@@ -9,3 +9,11 @@
         @apply bg-mist-800 text-amber-100 font-serif;
     }
 }
+
+input::-webkit-inner-spin-button {
+    display: none;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+}

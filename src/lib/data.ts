@@ -1,135 +1,88 @@
+export type Price = {
+  bid: number;
+  ask: number;
+};
+
 export type Entry = {
   timestamp: number;
   location: string;
   item: string;
-  price: number;
+  price: Price;
 };
 
-export type IndexEntry = {
-  latest: number;
-  delta: number;
-  average: number;
+export type GlobalMarket = {
+  min: Price;
+  max: Price;
+  average: Price;
   count: number;
-  min: number;
-  max: number;
+};
+
+export type LocalMarket = {
+  latest: Price;
 };
 
 export type Data = {
-  version?: number;
+  version: 4;
   entries: Entry[];
   items: string[];
   locations: string[];
-  index: Record<string, IndexEntry>;
+  market: {
+    local: Record<string, LocalMarket>;
+    global: Record<string, GlobalMarket>;
+  };
 };
-
-export function getVersion(data: any) {
-  if ("version" in data && typeof data.version === "number") {
-    return data.version;
-  }
-  return 1;
-}
-
-function recalculateStats(data: Data, itemName: string) {
-  const item = data.index[itemName];
-  if (!item) return;
-
-  let sum = 0;
-  let count = 0;
-  let min = Infinity;
-  let max = -Infinity;
-
-  for (const loc of data.locations) {
-    const locItem = data.index[`${itemName}-${loc}`];
-    if (locItem) {
-      sum += locItem.latest;
-      count++;
-      if (locItem.latest < min) min = locItem.latest;
-      if (locItem.latest > max) max = locItem.latest;
-    }
-  }
-
-  item.count = count;
-  item.average = count > 0 ? sum / count : 0;
-  item.min = count > 0 ? min : 0;
-  item.max = count > 0 ? max : 0;
-
-  for (const loc of data.locations) {
-    const locItem = data.index[`${itemName}-${loc}`];
-    if (locItem) {
-      locItem.delta = locItem.latest - item.min;
-    }
-  }
-}
 
 export function createEmptyData() {
   return {
-    version: 3,
+    version: 4,
     entries: [],
     items: [],
     locations: [],
-    index: {},
+    market: {
+      local: {},
+      global: {},
+    },
   } as Data;
 }
 
 export function migrate(data: any) {
-  if (getVersion(data) === 1) {
-    const oldIndex = data.index;
-    const newIndex: Record<string, IndexEntry> = {};
+  if (data.version === 3) {
+    const migrated = createEmptyData();
 
-    for (const [key, value] of Object.entries(oldIndex)) {
-      if (value && typeof value === "object" && "locations" in value) {
-        const oldItem = value as any;
-        newIndex[key] = {
-          latest: 0,
-          delta: 0,
-          average: oldItem.average ?? 0,
-          count: oldItem.count ?? 0,
-          min: 0,
-          max: 0,
-        };
+    const entries = Array.isArray(data.entries) ? data.entries : [];
 
-        if (oldItem.locations) {
-          for (const [loc, locData] of Object.entries(oldItem.locations)) {
-            newIndex[`${key}-${loc}`] = {
-              latest: (locData as any).latest ?? 0,
-              delta: (locData as any).delta ?? 0,
-              average: 0,
-              count: 0,
-              min: 0,
-              max: 0,
-            };
-          }
-        }
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object") {
+        continue;
       }
+
+      if (
+        typeof entry.timestamp !== "number" ||
+        typeof entry.location !== "string" ||
+        typeof entry.item !== "string" ||
+        typeof entry.price !== "number"
+      ) {
+        continue;
+      }
+
+      addEntry(migrated, {
+        timestamp: entry.timestamp,
+        location: entry.location,
+        item: entry.item,
+        price: {
+          bid: entry.price,
+          ask: entry.price,
+        },
+      });
     }
 
-    data.index = newIndex;
-    data.version = 2;
+    data.version = migrated.version;
+    data.entries = migrated.entries;
+    data.items = migrated.items;
+    data.locations = migrated.locations;
+    data.market = migrated.market;
 
-    // Recalculate to ensure min, max, and the new delta logic are applied
-    if (data.items) {
-      for (const itemName of data.items) {
-        recalculateStats(data, itemName);
-      }
-    }
-  }
-
-  if (getVersion(data) === 2) {
-    if (data.index) {
-      for (const key of Object.keys(data.index)) {
-        if (data.index[key].min === undefined) data.index[key].min = 0;
-        if (data.index[key].max === undefined) data.index[key].max = 0;
-      }
-    }
-
-    // Recalculate stats for the new delta logic (latest - min) and populating min/max
-    if (data.items) {
-      for (const itemName of data.items) {
-        recalculateStats(data, itemName);
-      }
-    }
-
-    data.version = 3;
+    delete data.index;
   }
 }
 
@@ -154,57 +107,159 @@ export function addEntry(data: Data, entry: Entry) {
     data.locations.push(entry.location);
   }
 
-  let item = data.index[entry.item];
+  let global = data.market.global[entry.item];
 
-  if (!item) {
-    data.index[entry.item] = item = {
-      latest: 0,
-      delta: 0,
-      average: 0,
+  if (!global) {
+    global = data.market.global[entry.item] = {
       count: 0,
-      min: 0,
-      max: 0,
+      min: { bid: entry.price.bid, ask: entry.price.ask },
+      max: { bid: entry.price.bid, ask: entry.price.ask },
+      average: { bid: entry.price.bid, ask: entry.price.ask },
     };
   }
 
-  let location = data.index[`${entry.item}-${entry.location}`];
+  let local = data.market.local[`${entry.item}-${entry.location}`];
 
-  if (!location) {
-    data.index[`${entry.item}-${entry.location}`] = location = {
-      latest: 0,
-      delta: 0,
-      average: 0,
-      count: 0,
-      min: 0,
-      max: 0,
+  if (local) {
+    global.average.bid += (entry.price.bid - local.latest.bid) / global.count;
+    global.average.ask += (entry.price.ask - local.latest.ask) / global.count;
+
+    local.latest = { bid: entry.price.bid, ask: entry.price.ask };
+  } else {
+    local = data.market.local[`${entry.item}-${entry.location}`] = {
+      latest: { bid: entry.price.bid, ask: entry.price.ask },
     };
+
+    global.count += 1;
+
+    global.average.bid +=
+      (local.latest.bid - global.average.bid) / global.count;
+    global.average.ask +=
+      (local.latest.ask - global.average.ask) / global.count;
   }
 
-  location.latest = entry.price;
+  global.min.bid = Infinity;
+  global.max.bid = 0;
+  global.min.ask = Infinity;
+  global.max.ask = 0;
 
-  recalculateStats(data, entry.item);
-}
+  for (const location of data.locations) {
+    const local = data.market.local[`${entry.item}-${location}`];
 
-export function deleteItem(data: Data, target: string) {
-  data.entries = data.entries.filter(({ item }) => item !== target);
+    if (!local) {
+      continue;
+    }
 
-  data.items = data.items.filter((item) => item !== target);
+    if (local.latest.bid < global.min.bid) {
+      global.min.bid = local.latest.bid;
+    }
 
-  delete data.index[target];
-  for (const loc of data.locations) {
-    delete data.index[`${target}-${loc}`];
-  }
-}
+    if (local.latest.bid > global.max.bid) {
+      global.max.bid = local.latest.bid;
+    }
 
-export function deleteLocation(data: Data, target: string) {
-  data.entries = data.entries.filter(({ location }) => location !== target);
+    if (local.latest.ask < global.min.ask) {
+      global.min.ask = local.latest.ask;
+    }
 
-  data.locations = data.locations.filter((location) => location !== target);
-
-  for (const item of data.items) {
-    if (data.index[`${item}-${target}`]) {
-      delete data.index[`${item}-${target}`];
-      recalculateStats(data, item);
+    if (local.latest.ask > global.max.ask) {
+      global.max.ask = local.latest.ask;
     }
   }
+}
+
+export function deleteItem(data: Data, item: string) {
+  data.entries = data.entries.filter((entry) => entry.item !== item);
+  data.items = data.items.filter((name) => name !== item);
+
+  delete data.market.global[item];
+
+  for (const location of data.locations) {
+    delete data.market.local[`${item}-${location}`];
+  }
+}
+
+export function deleteLocation(data: Data, location: string) {
+  data.entries = data.entries.filter((entry) => entry.location !== location);
+
+  data.locations = data.locations.filter((name) => name !== location);
+
+  for (const item of data.items) {
+    const local = data.market.local[`${item}-${location}`];
+
+    if (!local) {
+      continue;
+    }
+
+    delete data.market.local[`${item}-${location}`];
+
+    const global = data.market.global[item];
+
+    if (!global) {
+      throw new Error(`Global market missing for ${item}-${location}`);
+    }
+
+    global.count -= 1;
+
+    if (global.count === 0) {
+      delete data.market.global[item];
+      continue;
+    }
+
+    global.average.bid -=
+      (local.latest.bid - global.average.bid) / global.count;
+    global.average.ask -=
+      (local.latest.ask - global.average.ask) / global.count;
+
+    global.min.bid = Infinity;
+    global.max.bid = 0;
+    global.min.ask = Infinity;
+    global.max.ask = 0;
+
+    for (const location of data.locations) {
+      const local = data.market.local[`${item}-${location}`];
+
+      if (!local) {
+        continue;
+      }
+
+      if (local.latest.bid < global.min.bid) {
+        global.min.bid = local.latest.bid;
+      }
+
+      if (local.latest.bid > global.max.bid) {
+        global.max.bid = local.latest.bid;
+      }
+
+      if (local.latest.ask < global.min.ask) {
+        global.min.ask = local.latest.ask;
+      }
+
+      if (local.latest.ask > global.max.ask) {
+        global.max.ask = local.latest.ask;
+      }
+    }
+  }
+}
+
+export function getLocalMarket(data: Data, item: string, location: string) {
+  return data.market.local[`${item}-${location}`];
+}
+
+export function getGlobalMarket(data: Data, item: string) {
+  return data.market.global[item];
+}
+
+export function getMarketSpread(data: Data, item: string, location: string) {
+  const local = getLocalMarket(data, item, location);
+  const global = getGlobalMarket(data, item);
+
+  if (!local || !global) {
+    return undefined;
+  }
+
+  return {
+    bid: local.latest.bid - global.min.bid,
+    ask: global.max.ask - local.latest.ask,
+  };
 }

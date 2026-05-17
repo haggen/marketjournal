@@ -3,7 +3,7 @@
     "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "Preserve",
-    "moduleDetection": "force",
+    "moduleDetection": "auto",
     "jsx": "react-jsx",
     "allowJs": true,
     "moduleResolution": "bundler",

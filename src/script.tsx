@@ -13,26 +13,18 @@ import {
   deleteItem,
   deleteLocation,
   getInitialData,
+  getLocalMarket,
+  getMarketSpread,
   migrate,
   type Data,
   type Entry,
 } from "@/lib/data";
-import { mutated } from "@/lib/mutated";
+import { immutable } from "@/lib/immutable";
 import * as Table from "@/components/Table";
 import { Input } from "@/components/Input";
-import { Header } from "./components/Header";
-
-const fmt = {
-  number: (n: number) => new Intl.NumberFormat().format(n),
-};
-
-function getIndexEntry(data: Data, key: string) {
-  const entry = data.index[key];
-  if (!entry) {
-    throw new Error(`Index entry for ${key} is missing`);
-  }
-  return entry;
-}
+import { Header } from "@/components/Header";
+import { fmt } from "@/lib/fmt";
+import z from "zod";
 
 const root = document.getElementById("root");
 
@@ -43,7 +35,7 @@ if (!root) {
 createRoot(root).render(<App />);
 
 type Action =
-  | { type: "load"; payload: Data }
+  | { type: "import"; payload: Data }
   | { type: "add"; payload: Entry }
   | { type: "delete-item"; payload: string }
   | { type: "delete-location"; payload: string }
@@ -51,19 +43,22 @@ type Action =
 
 function reducer(data: Data, action: Action) {
   switch (action.type) {
-    case "load":
+    case "import":
       return action.payload;
     case "add":
-      return mutated(data, (data) => {
+      return immutable(data, (data) => {
         addEntry(data, action.payload);
+        return data;
       });
     case "delete-item":
-      return mutated(data, (data) => {
+      return immutable(data, (data) => {
         deleteItem(data, action.payload);
+        return data;
       });
     case "delete-location":
-      return mutated(data, (data) => {
+      return immutable(data, (data) => {
         deleteLocation(data, action.payload);
+        return data;
       });
     case "clear":
       return createEmptyData();
@@ -75,7 +70,7 @@ function reducer(data: Data, action: Action) {
 function App() {
   const [data, dispatch] = useReducer(reducer, null, getInitialData);
   const formRef = useRef<HTMLFormElement>(null);
-  const [filterQuery, setFilterQuery] = useState("");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     localStorage.setItem("data", JSON.stringify(data));
@@ -83,36 +78,32 @@ function App() {
 
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const elements = event.currentTarget.elements;
-    const location = (elements.namedItem("location") as HTMLInputElement).value;
-    const item = (elements.namedItem("item") as HTMLInputElement).value;
-    const price = (elements.namedItem("price") as HTMLInputElement)
-      .valueAsNumber;
-    const timestamp = Date.now();
-    dispatch({ type: "add", payload: { location, item, price, timestamp } });
-  };
 
-  const sortedItems = useMemo(() => {
-    const getLargestDelta = (item: string) => {
-      let maxDelta = 0;
-      for (const loc of data.locations) {
-        const locItem = data.index[`${item}-${loc}`];
-        if (locItem) {
-          maxDelta = Math.max(maxDelta, Math.abs(locItem.delta));
-        }
-      }
-      return maxDelta;
+    const data = new FormData(event.currentTarget);
+
+    const payload = {
+      timestamp: Date.now(),
+      location: z.string().min(1).parse(data.get("location")),
+      item: z.string().min(1).parse(data.get("item")),
+      price: {
+        bid: z.coerce.number().min(1).parse(data.get("bid")),
+        ask: z.coerce.number().min(1).parse(data.get("ask")),
+      },
     };
 
-    return [...data.items]
-      .filter((item) => item.toLowerCase().includes(filterQuery.toLowerCase()))
-      .sort((a, b) => getLargestDelta(b) - getLargestDelta(a));
-  }, [data.items, data.locations, data.index, filterQuery]);
+    dispatch({ type: "add", payload });
+  };
+
+  const items = useMemo(() => {
+    return [...data.items].filter((item) =>
+      item.toLowerCase().includes(query.toLowerCase()),
+    );
+  }, [data, query]);
 
   const quickEdit = (entry: {
-    location: string;
     item: string;
-    price: number;
+    location: string;
+    price?: { ask: number; bid: number };
   }) => {
     if (formRef.current) {
       const location = formRef.current.elements.namedItem(
@@ -121,13 +112,13 @@ function App() {
       const item = formRef.current.elements.namedItem(
         "item",
       ) as HTMLInputElement;
-      const price = formRef.current.elements.namedItem(
-        "price",
-      ) as HTMLInputElement;
+      const bid = formRef.current.elements.namedItem("bid") as HTMLInputElement;
+      const ask = formRef.current.elements.namedItem("ask") as HTMLInputElement;
       location.value = entry.location;
       item.value = entry.item;
-      price.valueAsNumber = entry.price;
-      price.select();
+      bid.value = String(entry.price?.bid ?? "");
+      ask.value = String(entry.price?.ask ?? "");
+      bid.select();
     }
   };
 
@@ -135,11 +126,11 @@ function App() {
     navigator.clipboard.writeText(JSON.stringify(data));
   };
 
-  const onLoad = () => {
+  const onImport = () => {
     navigator.clipboard.readText().then((src) => {
       const parsed = JSON.parse(src);
       migrate(parsed);
-      dispatch({ type: "load", payload: parsed as Data });
+      dispatch({ type: "import", payload: parsed as Data });
     });
   };
 
@@ -150,7 +141,7 @@ function App() {
           Market Journal
         </h1>
         <div className="flex gap-4 items-center justify-end">
-          <button onClick={() => onLoad()}>Load</button>
+          <button onClick={() => onImport()}>Import</button>
           <button onClick={() => onExport()}>Export</button>
         </div>
       </header>
@@ -178,11 +169,21 @@ function App() {
             />
           </label>
           <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Price:</span>
+            <span className="font-medium text-sm">Market bid:</span>
             <Input
               className="flex-1"
               type="number"
-              name="price"
+              name="bid"
+              required
+              min="1"
+            />
+          </label>
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Market ask:</span>
+            <Input
+              className="flex-1"
+              type="number"
+              name="ask"
               required
               min="1"
             />
@@ -191,7 +192,7 @@ function App() {
             type="submit"
             className="px-4 py-1 bg-yellow-600 border border-dashed border-yellow-600 bg-clip-padding font-medium hover:bg-amber-400 hover:border-amber-400"
           >
-            Save price
+            Save entry
           </button>
 
           <datalist id="locations">
@@ -224,8 +225,8 @@ function App() {
                 <input
                   type="search"
                   placeholder="Everything"
-                  value={filterQuery}
-                  onChange={(e) => setFilterQuery(e.target.value)}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                   className="bg-transparent border-none outline-none w-full p-0 m-0 font-inherit text-inherit placeholder-inherit focus:ring-0"
                 />
               </Table.Header>
@@ -254,7 +255,7 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {sortedItems.map((item) => (
+            {items.map((item) => (
               <tr key={item} className="group">
                 <Table.Header className="text-left bg-stone-600 border-stone-600 group-hover:bg-mauve-600 group-hover:border-mauve-600">
                   <Header
@@ -273,24 +274,32 @@ function App() {
                       quickEdit({
                         location,
                         item,
-                        price: data.index[`${item}-${location}`]?.latest ?? 0,
+                        price: getLocalMarket(data, item, location)?.latest,
                       })
                     }
                   >
-                    {data.index[`${item}-${location}`] ? (
+                    {getLocalMarket(data, item, location) ? (
                       <div className="inline-flex items-center gap-2">
+                        <span className="text-xs text-mist-400">Ask</span>
                         {fmt.number(
-                          getIndexEntry(data, `${item}-${location}`).latest,
+                          getLocalMarket(data, item, location)!.latest.ask,
                         )}
-                        {getIndexEntry(data, `${item}-${location}`).delta >
-                          0 && (
-                          <span className="px-1 border border-dashed border-mist-900 text-xs leading-normal bg-lime-800 text-lime-100">
-                            +
-                            {fmt.number(
-                              getIndexEntry(data, `${item}-${location}`).delta,
-                            )}
-                          </span>
+                        {/*<span className="px-1 border border-dashed border-lime-800 bg-clip-padding text-xs leading-normal bg-lime-800 text-lime-100">
+                          +
+                          {fmt.number(
+                            getMarketSpread(data, item, location)!.ask,
+                          )}
+                        </span>*/}
+                        <span className="text-xs text-mist-400">Bid</span>
+                        {fmt.number(
+                          getLocalMarket(data, item, location)!.latest.bid,
                         )}
+                        {/*<span className="px-1 border border-dashed border-lime-800 bg-clip-padding text-xs leading-normal bg-lime-800 text-lime-100">
+                          +
+                          {fmt.number(
+                            getMarketSpread(data, item, location)!.bid,
+                          )}
+                        </span>*/}
                       </div>
                     ) : (
                       "-"
