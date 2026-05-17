@@ -4,10 +4,7 @@ import { twMerge } from "tailwind-merge";
 export function Header({ className, ...props }: ComponentProps<"th">) {
   return (
     <th
-      className={twMerge(
-        "px-4 py-1 border border-dashed bg-clip-padding",
-        className,
-      )}
+      className={twMerge("px-3 border border-dashed", className)}
       {...props}
     />
   );
@@ -16,10 +13,7 @@ export function Header({ className, ...props }: ComponentProps<"th">) {
 export function Cell({ className, ...props }: ComponentProps<"td">) {
   return (
     <td
-      className={twMerge(
-        "px-4 py-1 border border-dashed bg-clip-padding",
-        className,
-      )}
+      className={twMerge("px-3 border border-dashed", className)}
       {...props}
     />
   );

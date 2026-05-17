@@ -12,16 +12,20 @@ import {
   createEmptyData,
   deleteItem,
   deleteLocation,
+  getGlobalMarket,
   getInitialData,
   getLocalMarket,
-  getMarketSpread,
+  getMarketBuyHighlight,
+  getMarketEfficiency,
+  getMarketSellHighlight,
+  getMarketGap,
   migrate,
   type Data,
   type Entry,
 } from "@/lib/data";
 import { immutable } from "@/lib/immutable";
 import * as Table from "@/components/Table";
-import { Input } from "@/components/Input";
+import { Input, Button } from "@/components/Form";
 import { Header } from "@/components/Header";
 import { fmt } from "@/lib/fmt";
 import z from "zod";
@@ -71,6 +75,7 @@ function App() {
   const [data, dispatch] = useReducer(reducer, null, getInitialData);
   const formRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState("");
+  const [submittedAt, setSubmittedAt] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("data", JSON.stringify(data));
@@ -92,12 +97,19 @@ function App() {
     };
 
     dispatch({ type: "add", payload });
+
+    setSubmittedAt(Date.now());
   };
 
   const items = useMemo(() => {
-    return [...data.items].filter((item) =>
-      item.toLowerCase().includes(query.toLowerCase()),
-    );
+    return [...data.items]
+      .filter((item) => item.toLowerCase().includes(query.toLowerCase()))
+      .sort((a, b) => {
+        const marketA = getGlobalMarket(data, a);
+        const marketB = getGlobalMarket(data, b);
+
+        return marketB.max.bid - marketA.max.bid;
+      });
   }, [data, query]);
 
   const quickEdit = (entry: {
@@ -118,7 +130,8 @@ function App() {
       item.value = entry.item;
       bid.value = String(entry.price?.bid ?? "");
       ask.value = String(entry.price?.ask ?? "");
-      bid.select();
+      ask.select();
+      formRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -141,17 +154,27 @@ function App() {
           Market Journal
         </h1>
         <div className="flex gap-4 items-center justify-end">
-          <button onClick={() => onImport()}>Import</button>
-          <button onClick={() => onExport()}>Export</button>
+          <button
+            className="hover:text-white active:opacity-50"
+            onClick={() => onImport()}
+          >
+            Import
+          </button>
+          <button
+            className="hover:text-white active:opacity-50"
+            onClick={() => onExport()}
+          >
+            Export
+          </button>
         </div>
       </header>
 
       <form ref={formRef} onSubmit={onSubmit}>
-        <fieldset className="flex gap-2 justify-center p-3 bg-olive-600 border border-dashed border-mist-800 items-end">
+        <fieldset className="flex gap-2 justify-center px-3 py-2 bg-olive-600 border border-dashed border-mist-800 items-end">
           <label className="flex-1 flex flex-col gap-1">
             <span className="font-medium text-sm">Location:</span>
             <Input
-              className="flex-1"
+              className="flex-1 border-olive-600"
               type="text"
               name="location"
               required
@@ -161,7 +184,7 @@ function App() {
           <label className="flex-1 flex flex-col gap-1">
             <span className="font-medium text-sm">Item:</span>
             <Input
-              className="flex-1"
+              className="flex-1 border-olive-600"
               type="text"
               name="item"
               required
@@ -169,31 +192,28 @@ function App() {
             />
           </label>
           <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Market bid:</span>
+            <span className="font-medium text-sm">Buy price:</span>
             <Input
-              className="flex-1"
-              type="number"
-              name="bid"
-              required
-              min="1"
-            />
-          </label>
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Market ask:</span>
-            <Input
-              className="flex-1"
+              className="flex-1 border-olive-600"
               type="number"
               name="ask"
               required
               min="1"
             />
           </label>
-          <button
-            type="submit"
-            className="px-4 py-1 bg-yellow-600 border border-dashed border-yellow-600 bg-clip-padding font-medium hover:bg-amber-400 hover:border-amber-400"
-          >
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Sell price:</span>
+            <Input
+              className="flex-1 border-olive-600"
+              type="number"
+              name="bid"
+              required
+              min="1"
+            />
+          </label>
+          <Button key={submittedAt} type="submit" className="border-olive-600">
             Save entry
-          </button>
+          </Button>
 
           <datalist id="locations">
             {data.locations.map((location) => (
@@ -219,19 +239,19 @@ function App() {
           <thead>
             <tr>
               <Table.Header
-                className="text-left bg-mist-700 border-mist-700"
+                className="font-normal text-left border-mist-800 bg-mist-700"
                 rowSpan={2}
               >
-                <input
+                <Input
                   type="search"
-                  placeholder="Everything"
+                  placeholder="Search item..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none w-full p-0 m-0 font-inherit text-inherit placeholder-inherit focus:ring-0"
+                  className="w-full border-mist-700"
                 />
               </Table.Header>
               <Table.Header
-                className="bg-mist-700 border-mist-700"
+                className="border-mist-800 bg-mist-700"
                 colSpan={Math.max(1, data.locations.length)}
               >
                 Price
@@ -240,7 +260,7 @@ function App() {
             <tr>
               {data.locations.map((location) => (
                 <Table.Header
-                  className="bg-stone-600 border-stone-600"
+                  className="border-mist-800 bg-stone-600"
                   key={location}
                 >
                   <Header
@@ -256,8 +276,8 @@ function App() {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item} className="group">
-                <Table.Header className="text-left bg-stone-600 border-stone-600 group-hover:bg-mauve-600 group-hover:border-mauve-600">
+              <tr key={item} className="group hover:text-white">
+                <Table.Header className="text-left border-mist-800 bg-stone-600 group-hover:bg-gray-600 ">
                   <Header
                     onDelete={() =>
                       dispatch({ type: "delete-item", payload: item })
@@ -266,46 +286,60 @@ function App() {
                     {item}
                   </Header>
                 </Table.Header>
-                {data.locations.map((location) => (
-                  <Table.Cell
-                    className="text-center bg-mist-900 border-mist-900 group-hover:bg-mauve-900/60 group-hover:border-mauve-900/60 hover:bg-mauve-900 hover:border-mauve-900"
-                    key={`${location}-${item}`}
-                    onClick={() =>
-                      quickEdit({
-                        location,
-                        item,
-                        price: getLocalMarket(data, item, location)?.latest,
-                      })
-                    }
-                  >
-                    {getLocalMarket(data, item, location) ? (
-                      <div className="inline-flex items-center gap-2">
-                        <span className="text-xs text-mist-400">Ask</span>
-                        {fmt.number(
-                          getLocalMarket(data, item, location)!.latest.ask,
-                        )}
-                        {/*<span className="px-1 border border-dashed border-lime-800 bg-clip-padding text-xs leading-normal bg-lime-800 text-lime-100">
-                          +
-                          {fmt.number(
-                            getMarketSpread(data, item, location)!.ask,
-                          )}
-                        </span>*/}
-                        <span className="text-xs text-mist-400">Bid</span>
-                        {fmt.number(
-                          getLocalMarket(data, item, location)!.latest.bid,
-                        )}
-                        {/*<span className="px-1 border border-dashed border-lime-800 bg-clip-padding text-xs leading-normal bg-lime-800 text-lime-100">
-                          +
-                          {fmt.number(
-                            getMarketSpread(data, item, location)!.bid,
-                          )}
-                        </span>*/}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </Table.Cell>
-                ))}
+                {data.locations.map((location) => {
+                  const global = getGlobalMarket(data, item);
+                  const local = getLocalMarket(data, item, location);
+                  const spread = getMarketGap(data, item, location);
+
+                  return (
+                    <Table.Cell
+                      className="text-center border-mist-800 bg-mist-900 group-hover:bg-gray-600/30 hover:bg-gray-600/60 "
+                      key={`${location}-${item}`}
+                      onClick={() =>
+                        quickEdit({
+                          location,
+                          item,
+                          price: local?.latest,
+                        })
+                      }
+                    >
+                      {local.latest.ask > 0 ? (
+                        <div className="inline-flex items-center gap-2">
+                          {spread.ask > 0 ? (
+                            <span
+                              className="px-1 bg-clip-padding border border-dashed border-lime-700 bg-lime-700 text-lime-100 text-xs leading-normal rounded"
+                              title="Discount compared to the highest buy price."
+                            >
+                              {fmt.number(spread.ask / local.latest.ask, {
+                                style: "percent",
+                              })}
+                            </span>
+                          ) : null}
+
+                          <span className="text-xs text-mist-400">Buy</span>
+                          {fmt.number(local.latest.ask)}
+
+                          <span className="text-xs text-mist-400">Sell</span>
+                          {fmt.number(local.latest.bid)}
+
+                          {spread.bid > 0 ? (
+                            <span
+                              className="px-1 bg-clip-padding border border-dashed border-sky-700 bg-sky-700 text-blue-100 text-xs leading-normal rounded"
+                              title="Premium compared to the lowest sell price."
+                            >
+                              +
+                              {fmt.number(spread.bid / local.latest.bid, {
+                                style: "percent",
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
+                    </Table.Cell>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

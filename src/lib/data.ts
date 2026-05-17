@@ -243,23 +243,50 @@ export function deleteLocation(data: Data, location: string) {
 }
 
 export function getLocalMarket(data: Data, item: string, location: string) {
-  return data.market.local[`${item}-${location}`];
+  return (
+    data.market.local[`${item}-${location}`] ?? { latest: { bid: 0, ask: 0 } }
+  );
 }
 
 export function getGlobalMarket(data: Data, item: string) {
-  return data.market.global[item];
+  return (
+    data.market.global[item] ?? {
+      min: { bid: 0, ask: 0 },
+      max: { bid: 0, ask: 0 },
+      average: { bid: 0, ask: 0 },
+      count: 0,
+    }
+  );
 }
 
-export function getMarketSpread(data: Data, item: string, location: string) {
+export function getMarketGap(data: Data, item: string, location: string) {
   const local = getLocalMarket(data, item, location);
   const global = getGlobalMarket(data, item);
 
   if (!local || !global) {
-    return undefined;
+    return { bid: 0, ask: 0 };
   }
 
   return {
     bid: local.latest.bid - global.min.bid,
     ask: global.max.ask - local.latest.ask,
+  };
+}
+
+export function getMarketEfficiency(
+  data: Data,
+  item: string,
+  location: string,
+) {
+  const local = getLocalMarket(data, item, location);
+  const global = getGlobalMarket(data, item);
+
+  if (!local || !global) {
+    return { bid: 0, ask: 0 };
+  }
+
+  return {
+    bid: global.min.bid > 0 ? local.latest.bid / global.min.bid : 0,
+    ask: global.max.ask > 0 ? local.latest.ask / global.max.ask : 0,
   };
 }

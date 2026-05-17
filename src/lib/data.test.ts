@@ -7,7 +7,7 @@ import {
   getGlobalMarket,
   getInitialData,
   getLocalMarket,
-  getMarketSpread,
+  getMarketGap,
   migrate,
   type Entry,
 } from "./data";
@@ -265,6 +265,6 @@ describe("getSpread", () => {
     addEntry(data, buildEntry(1, "ore", "town", 15, 17));
     addEntry(data, buildEntry(2, "ore", "city", 25, 30));
 
-    expect(getMarketSpread(data, "ore", "city")).toEqual({ bid: 10, ask: 0 });
+    expect(getMarketGap(data, "ore", "city")).toEqual({ bid: 10, ask: 0 });
   });
 });
