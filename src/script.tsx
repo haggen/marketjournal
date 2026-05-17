@@ -148,7 +148,7 @@ function App() {
   };
 
   return (
-    <main className="container mx-auto flex flex-col gap-6 px-2 py-12">
+    <main className="mx-auto flex flex-col gap-6 px-6 py-12">
       <header className="grid grid-cols-3">
         <h1 className="text-center text-3xl font-medium col-start-2">
           Market Journal
@@ -192,21 +192,21 @@ function App() {
             />
           </label>
           <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Buy price:</span>
-            <Input
-              className="flex-1 border-olive-600"
-              type="number"
-              name="ask"
-              required
-              min="1"
-            />
-          </label>
-          <label className="flex-1 flex flex-col gap-1">
             <span className="font-medium text-sm">Sell price:</span>
             <Input
               className="flex-1 border-olive-600"
               type="number"
               name="bid"
+              required
+              min="1"
+            />
+          </label>
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Buy price:</span>
+            <Input
+              className="flex-1 border-olive-600"
+              type="number"
+              name="ask"
               required
               min="1"
             />
@@ -305,6 +305,30 @@ function App() {
                     >
                       {local.latest.ask > 0 ? (
                         <div className="inline-flex items-center gap-2">
+                          {spread.bid > 0 ? (
+                            <span
+                              className="px-1 bg-clip-padding border border-dashed border-sky-700 bg-sky-700 text-blue-100 text-xs leading-normal rounded"
+                              title="Premium compared to the lowest sell price."
+                            >
+                              +
+                              {fmt.number(spread.bid / local.latest.bid, {
+                                style: "percent",
+                              })}
+                            </span>
+                          ) : null}
+
+                          <span className="text-xs text-mist-400">Sell</span>
+
+                          <span title="Sell price">
+                            {fmt.number(local.latest.bid)}
+                          </span>
+
+                          <span className="text-xs text-mist-400">Buy</span>
+
+                          <span title="Buy price">
+                            {fmt.number(local.latest.ask)}
+                          </span>
+
                           {spread.ask > 0 ? (
                             <span
                               className="px-1 bg-clip-padding border border-dashed border-lime-700 bg-lime-700 text-lime-100 text-xs leading-normal rounded"
@@ -316,24 +340,6 @@ function App() {
                                   style: "percent",
                                 },
                               )}
-                            </span>
-                          ) : null}
-
-                          <span className="text-xs text-mist-400">Buy</span>
-                          {fmt.number(local.latest.ask)}
-
-                          <span className="text-xs text-mist-400">Sell</span>
-                          {fmt.number(local.latest.bid)}
-
-                          {spread.bid > 0 ? (
-                            <span
-                              className="px-1 bg-clip-padding border border-dashed border-sky-700 bg-sky-700 text-blue-100 text-xs leading-normal rounded"
-                              title="Premium compared to the lowest sell price."
-                            >
-                              +
-                              {fmt.number(spread.bid / local.latest.bid, {
-                                style: "percent",
-                              })}
                             </span>
                           ) : null}
                         </div>
