@@ -136,7 +136,7 @@ function App() {
       getFormElement(formRef.current, "ask").value = String(
         entry.price?.ask ?? "",
       );
-      getFormElement(formRef.current, "ask").select();
+      getFormElement(formRef.current, "bid").select();
 
       formRef.current.scrollIntoView({ behavior: "smooth" });
     }
