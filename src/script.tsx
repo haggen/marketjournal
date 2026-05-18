@@ -15,9 +15,6 @@ import {
   getGlobalMarket,
   getInitialData,
   getLocalMarket,
-  getMarketBuyHighlight,
-  getMarketEfficiency,
-  getMarketSellHighlight,
   getMarketGap,
   migrate,
   type Data,
@@ -71,6 +68,14 @@ function reducer(data: Data, action: Action) {
   }
 }
 
+function getFormElement(form: HTMLFormElement, id: string) {
+  const element = form.elements.namedItem(id);
+  if (!element) {
+    throw new Error(`Form element with id "${id}" not found`);
+  }
+  return element as HTMLInputElement;
+}
+
 function App() {
   const [data, dispatch] = useReducer(reducer, null, getInitialData);
   const formRef = useRef<HTMLFormElement>(null);
@@ -98,6 +103,11 @@ function App() {
 
     dispatch({ type: "add", payload });
 
+    getFormElement(event.currentTarget, "item").value = "";
+    getFormElement(event.currentTarget, "bid").value = "";
+    getFormElement(event.currentTarget, "ask").value = "";
+    getFormElement(event.currentTarget, "item").focus();
+
     setSubmittedAt(Date.now());
   };
 
@@ -118,19 +128,16 @@ function App() {
     price?: { ask: number; bid: number };
   }) => {
     if (formRef.current) {
-      const location = formRef.current.elements.namedItem(
-        "location",
-      ) as HTMLInputElement;
-      const item = formRef.current.elements.namedItem(
-        "item",
-      ) as HTMLInputElement;
-      const bid = formRef.current.elements.namedItem("bid") as HTMLInputElement;
-      const ask = formRef.current.elements.namedItem("ask") as HTMLInputElement;
-      location.value = entry.location;
-      item.value = entry.item;
-      bid.value = String(entry.price?.bid ?? "");
-      ask.value = String(entry.price?.ask ?? "");
-      ask.select();
+      getFormElement(formRef.current, "location").value = entry.location;
+      getFormElement(formRef.current, "item").value = entry.item;
+      getFormElement(formRef.current, "bid").value = String(
+        entry.price?.bid ?? "",
+      );
+      getFormElement(formRef.current, "ask").value = String(
+        entry.price?.ask ?? "",
+      );
+      getFormElement(formRef.current, "ask").select();
+
       formRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
@@ -242,19 +249,19 @@ function App() {
                 className="font-normal text-left border-mist-800 bg-mist-700"
                 rowSpan={2}
               >
-                <Input
+                <input
                   type="search"
-                  placeholder="Search item..."
+                  placeholder="Everything..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full border-mist-700"
+                  className="w-full text-sm placeholder:text-mist-400"
                 />
               </Table.Header>
               <Table.Header
                 className="border-mist-800 bg-mist-700"
                 colSpan={Math.max(1, data.locations.length)}
               >
-                Price
+                Prices
               </Table.Header>
             </tr>
             <tr>
@@ -304,44 +311,40 @@ function App() {
                       }
                     >
                       {local.latest.ask > 0 ? (
-                        <div className="inline-flex items-center gap-2">
-                          {spread.bid > 0 ? (
-                            <span
-                              className="px-1 bg-clip-padding border border-dashed border-sky-700 bg-sky-700 text-blue-100 text-xs leading-normal rounded"
-                              title="Premium compared to the lowest sell price."
-                            >
-                              +
-                              {fmt.number(spread.bid / local.latest.bid, {
-                                style: "percent",
-                              })}
-                            </span>
-                          ) : null}
-
-                          <span className="text-xs text-mist-400">Sell</span>
+                        <div className="inline-grid grid-cols-[1fr_repeat(3,auto)_1fr] items-center gap-2">
+                          <span
+                            className="text-xs text-sky-500"
+                            title="Premium compared to the lowest sell price."
+                          >
+                            {spread.bid > 0
+                              ? "+" +
+                                fmt.number(spread.bid / local.latest.bid, {
+                                  style: "percent",
+                                })
+                              : null}
+                          </span>
 
                           <span title="Sell price">
                             {fmt.number(local.latest.bid)}
                           </span>
 
-                          <span className="text-xs text-mist-400">Buy</span>
+                          <span className="text-xs text-mist-400">/</span>
 
                           <span title="Buy price">
                             {fmt.number(local.latest.ask)}
                           </span>
 
-                          {spread.ask > 0 ? (
-                            <span
-                              className="px-1 bg-clip-padding border border-dashed border-lime-700 bg-lime-700 text-lime-100 text-xs leading-normal rounded"
-                              title="Discount compared to the highest buy price."
-                            >
-                              {fmt.number(
-                                (spread.ask / local.latest.ask) * -1,
-                                {
-                                  style: "percent",
-                                },
-                              )}
-                            </span>
-                          ) : null}
+                          <span
+                            className="text-xs text-lime-500"
+                            title="Discount compared to the highest buy price."
+                          >
+                            {spread.ask > 0
+                              ? fmt.number(
+                                  (spread.ask / local.latest.ask) * -1,
+                                  { style: "percent" },
+                                )
+                              : null}
+                          </span>
                         </div>
                       ) : (
                         "-"
