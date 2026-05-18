@@ -10,6 +10,7 @@ import {
   getMarketGap,
   migrate,
   type Entry,
+  type EntryTuple,
 } from "./data";
 
 function createMockStorage(initial: Record<string, string> = {}): Storage {
@@ -61,10 +62,10 @@ beforeEach(() => {
 });
 
 describe("createEmptyData", () => {
-  it("returns an empty v4 data shape", () => {
+  it("returns an empty v5 data shape", () => {
     const data = createEmptyData();
 
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(data.entries).toEqual([]);
     expect(data.items).toEqual([]);
     expect(data.locations).toEqual([]);
@@ -74,7 +75,7 @@ describe("createEmptyData", () => {
 });
 
 describe("migrate", () => {
-  it("migrates v3 data entries to v4 market shape", () => {
+  it("migrates v3 data entries to v5 market shape", () => {
     const legacy = {
       version: 3,
       entries: [
@@ -88,7 +89,7 @@ describe("migrate", () => {
 
     migrate(legacy);
 
-    expect(legacy.version).toBe(4);
+    expect(legacy.version).toBe(5);
     expect(legacy.index).toBeUndefined();
     expect(legacy.items).toEqual(["ore"]);
     expect(legacy.locations.sort()).toEqual(["city", "town"]);
@@ -109,10 +110,41 @@ describe("migrate", () => {
     });
   });
 
-  it("leaves non-v3 data unchanged", () => {
+  it("migrates v4 entries to v5 tuples", () => {
+    const v4data = {
+      version: 4,
+      entries: [
+        {
+          timestamp: 1,
+          item: "ore",
+          location: "town",
+          price: { bid: 10, ask: 12 },
+        },
+        {
+          timestamp: 2,
+          item: "ore",
+          location: "city",
+          price: { bid: 20, ask: 24 },
+        },
+      ] as Entry[],
+      items: ["ore"],
+      locations: ["town", "city"],
+      market: { local: {}, global: {} },
+    } as any;
+
+    migrate(v4data);
+
+    expect(v4data.version).toBe(5);
+    expect(v4data.entries).toEqual<EntryTuple[]>([
+      [1, "ore", "town", 10, 12],
+      [2, "ore", "city", 20, 24],
+    ]);
+  });
+
+  it("leaves non-v3/v4 data unchanged", () => {
     const current = createEmptyData();
     migrate(current);
-    expect(current.version).toBe(4);
+    expect(current.version).toBe(5);
     expect(current.market.local).toEqual({});
     expect(current.market.global).toEqual({});
   });
@@ -137,7 +169,7 @@ describe("getInitialData", () => {
 
     const data = getInitialData();
 
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(data.items).toEqual(["fish"]);
     expect(data.locations).toEqual(["dock"]);
     expect(data.market.global["fish"]?.average).toEqual({ bid: 30, ask: 30 });
@@ -186,7 +218,7 @@ describe("deleteItem", () => {
     deleteItem(data, "ore");
 
     expect(data.items).toEqual(["wood"]);
-    expect(data.entries.every((entry) => entry.item !== "ore")).toBe(true);
+    expect(data.entries.every((entry) => entry[1] !== "ore")).toBe(true);
     expect(data.market.global["ore"]).toBeUndefined();
     expect(data.market.local["ore-town"]).toBeUndefined();
     expect(data.market.local["ore-city"]).toBeUndefined();
@@ -205,7 +237,7 @@ describe("deleteLocation", () => {
     deleteLocation(data, "town");
 
     expect(data.locations).toEqual(["city"]);
-    expect(data.entries.every((entry) => entry.location !== "town")).toBe(true);
+    expect(data.entries.every((entry) => entry[2] !== "town")).toBe(true);
 
     expect(data.market.local["ore-town"]).toBeUndefined();
     expect(data.market.local["wood-town"]).toBeUndefined();
@@ -228,12 +260,12 @@ describe("getLocalMarket", () => {
     });
   });
 
-  it("throws when local market is missing", () => {
+  it("returns zeros when local market is missing", () => {
     const data = createEmptyData();
 
-    expect(() => getLocalMarket(data, "ore", "town")).toThrow(
-      "Local market missing for ore-town",
-    );
+    expect(getLocalMarket(data, "ore", "town")).toEqual({
+      latest: { bid: 0, ask: 0 },
+    });
   });
 });
 
@@ -250,12 +282,15 @@ describe("getGlobalMarket", () => {
     });
   });
 
-  it("throws when global market is missing", () => {
+  it("returns zeros when global market is missing", () => {
     const data = createEmptyData();
 
-    expect(() => getGlobalMarket(data, "ore")).toThrow(
-      "Global market missing for ore",
-    );
+    expect(getGlobalMarket(data, "ore")).toEqual({
+      min: { bid: 0, ask: 0 },
+      max: { bid: 0, ask: 0 },
+      average: { bid: 0, ask: 0 },
+      count: 0,
+    });
   });
 });
 

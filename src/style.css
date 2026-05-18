@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-    --font-serif: "Montagu Slab", serif;
+    --font-serif: "BioRhyme", serif;
 
     --animate-blink: blink 0.1s steps(1) forwards;
 

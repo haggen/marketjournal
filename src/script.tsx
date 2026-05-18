@@ -271,7 +271,7 @@ function App() {
                   placeholder="Everything..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full text-sm placeholder:text-mist-400"
+                  className="w-full text-sm placeholder:text-mist-400 focus-within:outline-none"
                 />
               </Table.Header>
               <Table.Header
@@ -328,9 +328,9 @@ function App() {
                       }
                     >
                       {local.latest.ask > 0 ? (
-                        <div className="inline-grid grid-cols-[1fr_repeat(3,auto)_1fr] items-center gap-2">
+                        <div className="grid grid-cols-[1fr_repeat(3,auto)_1fr] items-center gap-2 w-full">
                           <span
-                            className="text-xs text-sky-500"
+                            className="text-xs text-sky-500 justify-self-end"
                             title="Premium compared to the lowest sell price."
                           >
                             {spread.bid > 0
@@ -345,14 +345,14 @@ function App() {
                             {fmt.number(local.latest.bid)}
                           </span>
 
-                          <span className="text-xs text-mist-400">/</span>
+                          <span className="text-xs text-mist-400">↑↓</span>
 
                           <span title="Buy price">
                             {fmt.number(local.latest.ask)}
                           </span>
 
                           <span
-                            className="text-xs text-lime-500"
+                            className="text-xs text-lime-500 justify-self-start"
                             title="Discount compared to the highest buy price."
                           >
                             {spread.ask > 0

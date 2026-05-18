@@ -10,6 +10,9 @@ export type Entry = {
   price: Price;
 };
 
+// [timestamp, item, location, bid, ask]
+export type EntryTuple = [number, string, string, number, number];
+
 export type GlobalMarket = {
   min: Price;
   max: Price;
@@ -22,8 +25,8 @@ export type LocalMarket = {
 };
 
 export type Data = {
-  version: 4;
-  entries: Entry[];
+  version: 5;
+  entries: EntryTuple[];
   items: string[];
   locations: string[];
   market: {
@@ -34,7 +37,7 @@ export type Data = {
 
 export function createEmptyData() {
   return {
-    version: 4,
+    version: 5,
     entries: [],
     items: [],
     locations: [],
@@ -84,6 +87,19 @@ export function migrate(data: any) {
 
     delete data.index;
   }
+
+  if (data.version === 4) {
+    data.entries = (Array.isArray(data.entries) ? data.entries : []).map(
+      (entry: Entry): EntryTuple => [
+        entry.timestamp,
+        entry.item,
+        entry.location,
+        entry.price.bid,
+        entry.price.ask,
+      ],
+    );
+    data.version = 5;
+  }
 }
 
 export function getInitialData() {
@@ -97,7 +113,13 @@ export function getInitialData() {
 }
 
 export function addEntry(data: Data, entry: Entry) {
-  data.entries.push(entry);
+  data.entries.push([
+    entry.timestamp,
+    entry.item,
+    entry.location,
+    entry.price.bid,
+    entry.price.ask,
+  ]);
 
   if (!data.items.includes(entry.item)) {
     data.items.push(entry.item);
@@ -169,7 +191,7 @@ export function addEntry(data: Data, entry: Entry) {
 }
 
 export function deleteItem(data: Data, item: string) {
-  data.entries = data.entries.filter((entry) => entry.item !== item);
+  data.entries = data.entries.filter((entry) => entry[1] !== item);
   data.items = data.items.filter((name) => name !== item);
 
   delete data.market.global[item];
@@ -180,7 +202,7 @@ export function deleteItem(data: Data, item: string) {
 }
 
 export function deleteLocation(data: Data, location: string) {
-  data.entries = data.entries.filter((entry) => entry.location !== location);
+  data.entries = data.entries.filter((entry) => entry[2] !== location);
 
   data.locations = data.locations.filter((name) => name !== location);
 
