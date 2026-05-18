@@ -147,11 +147,28 @@ function App() {
   };
 
   const onImport = () => {
-    navigator.clipboard.readText().then((src) => {
-      const parsed = JSON.parse(src);
-      migrate(parsed);
-      dispatch({ type: "import", payload: parsed as Data });
-    });
+    navigator.clipboard
+      .readText()
+      .then((src) => {
+        if (src.startsWith("http://")) {
+          fetch(src, { headers: { accept: "text/json, application/json" } })
+            .then((response) => {
+              if (response.ok) {
+                response.text().then((src) => {
+                  const parsed = JSON.parse(src);
+                  migrate(parsed);
+                  dispatch({ type: "import", payload: parsed as Data });
+                });
+              }
+            })
+            .catch(console.error);
+        } else {
+          const parsed = JSON.parse(src);
+          migrate(parsed);
+          dispatch({ type: "import", payload: parsed as Data });
+        }
+      })
+      .catch(console.error);
   };
 
   return (
