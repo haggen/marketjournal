@@ -5,6 +5,8 @@ import {
   useState,
   useMemo,
   type SubmitEvent,
+  type Ref,
+  useImperativeHandle,
 } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -21,11 +23,10 @@ import {
   type Entry,
 } from "@/lib/data";
 import { immutable } from "@/lib/immutable";
-import * as Table from "@/components/Table";
-import { Input, Button } from "@/components/Form";
-import { Header } from "@/components/Header";
 import { fmt } from "@/lib/fmt";
 import z from "zod";
+import { getFormElement, setFormValue } from "./lib/form";
+import { twMerge } from "tailwind-merge";
 
 const root = document.getElementById("root");
 
@@ -34,6 +35,15 @@ if (!root) {
 }
 
 createRoot(root).render(<App />);
+
+const styles = {
+  th: "px-3 border border-dashed",
+  td: "px-3 border border-dashed",
+  input:
+    "px-1 py-1 bg-black/30 border border-dashed focus-within:outline-none focus-within:bg-black/60",
+  button:
+    "px-6 py-1 font-bold font-sm bg-yellow-600 border border-dashed hover:bg-yellow-500 hover:text-white active:opacity-50 animate-blink",
+};
 
 type Action =
   | { type: "import"; payload: Data }
@@ -68,25 +78,39 @@ function reducer(data: Data, action: Action) {
   }
 }
 
-function getFormElement(form: HTMLFormElement, id: string) {
-  const element = form.elements.namedItem(id);
-  if (!element) {
-    throw new Error(`Form element with id "${id}" not found`);
-  }
-  return element as HTMLInputElement;
-}
-
-function App() {
-  const [data, dispatch] = useReducer(reducer, null, getInitialData);
-  const formRef = useRef<HTMLFormElement>(null);
-  const [query, setQuery] = useState("");
+function Form({
+  ref,
+  onEntry,
+  lists,
+}: {
+  ref: Ref<{
+    prefill(entry: Omit<Entry, "timestamp">): void;
+  }>;
+  onEntry: (entry: Entry) => void;
+  lists: { items: string[]; locations: string[] };
+}) {
   const [submittedAt, setSubmittedAt] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  useEffect(() => {
-    localStorage.setItem("data", JSON.stringify(data));
-  }, [data]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      prefill(entry: Omit<Entry, "timestamp">) {
+        if (formRef.current) {
+          setFormValue(formRef.current, "location", entry.location);
+          setFormValue(formRef.current, "item", entry.item);
+          setFormValue(formRef.current, "bid", entry.price.bid.toString());
+          setFormValue(formRef.current, "ask", entry.price.ask.toString());
 
-  const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+          formRef.current.scrollIntoView();
+          getFormElement(formRef.current, "bid").focus();
+        }
+      },
+    }),
+    [],
+  );
+
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const data = new FormData(event.currentTarget);
@@ -101,14 +125,119 @@ function App() {
       },
     };
 
-    dispatch({ type: "add", payload });
+    onEntry(payload);
 
-    getFormElement(event.currentTarget, "item").value = "";
-    getFormElement(event.currentTarget, "bid").value = "";
-    getFormElement(event.currentTarget, "ask").value = "";
+    setFormValue(event.currentTarget, "item", "");
+    setFormValue(event.currentTarget, "bid", "");
+    setFormValue(event.currentTarget, "ask", "");
+
     getFormElement(event.currentTarget, "item").focus();
 
     setSubmittedAt(Date.now());
+  };
+
+  return (
+    <form ref={formRef} onSubmit={handleSubmit}>
+      <fieldset className="flex gap-2 justify-center px-3 py-2 bg-olive-600 border border-dashed border-mist-800 items-end">
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="font-medium text-sm">Location:</span>
+          <input
+            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            type="text"
+            name="location"
+            required
+            list="locations"
+          />
+        </label>
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="font-medium text-sm">Item:</span>
+          <input
+            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            type="text"
+            name="item"
+            required
+            list="items"
+          />
+        </label>
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="font-medium text-sm">Sell price:</span>
+          <input
+            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            type="number"
+            name="bid"
+            required
+            min="1"
+          />
+        </label>
+        <label className="flex-1 flex flex-col gap-1">
+          <span className="font-medium text-sm">Buy price:</span>
+          <input
+            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            type="number"
+            name="ask"
+            required
+            min="1"
+          />
+        </label>
+        <button
+          key={submittedAt}
+          type="submit"
+          className={twMerge(styles.button, "border-olive-600")}
+        >
+          Save entry
+        </button>
+
+        <datalist id="locations">
+          {lists.locations.map((location) => (
+            <option key={location} value={location} />
+          ))}
+        </datalist>
+
+        <datalist id="items">
+          {lists.items.map((item) => (
+            <option key={item} value={item} />
+          ))}
+        </datalist>
+      </fieldset>
+    </form>
+  );
+}
+
+export function Header({
+  children,
+  onDelete,
+}: {
+  children: string;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="inline-flex items-center">
+      <div className="text-xs">{children}</div>
+
+      <button
+        className="px-2 text-yellow-100/50 hover:text-white active:opacity-50"
+        type="button"
+        onClick={() => onDelete()}
+      >
+        &times;
+      </button>
+    </div>
+  );
+}
+
+function App() {
+  const [data, dispatch] = useReducer(reducer, null, getInitialData);
+  const formRef = useRef<{ prefill(entry: Omit<Entry, "timestamp">): void }>(
+    null,
+  );
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("data", JSON.stringify(data));
+  }, [data]);
+
+  const onEntry = (payload: Entry) => {
+    dispatch({ type: "add", payload });
   };
 
   const items = useMemo(() => {
@@ -122,31 +251,25 @@ function App() {
       });
   }, [data, query]);
 
-  const quickEdit = (entry: {
-    item: string;
-    location: string;
-    price?: { ask: number; bid: number };
-  }) => {
+  const handlePrefill = (
+    location: string,
+    item: string,
+    price?: { bid: number; ask: number },
+  ) => {
     if (formRef.current) {
-      getFormElement(formRef.current, "location").value = entry.location;
-      getFormElement(formRef.current, "item").value = entry.item;
-      getFormElement(formRef.current, "bid").value = String(
-        entry.price?.bid ?? "",
-      );
-      getFormElement(formRef.current, "ask").value = String(
-        entry.price?.ask ?? "",
-      );
-      getFormElement(formRef.current, "bid").select();
-
-      formRef.current.scrollIntoView({ behavior: "smooth" });
+      formRef.current.prefill({
+        location,
+        item,
+        price: price ?? { bid: 0, ask: 0 },
+      });
     }
   };
 
-  const onExport = () => {
+  const handleExport = () => {
     navigator.clipboard.writeText(JSON.stringify(data));
   };
 
-  const onImport = () => {
+  const handleImport = () => {
     navigator.clipboard
       .readText()
       .then((src) => {
@@ -180,78 +303,24 @@ function App() {
         <div className="flex gap-4 items-center justify-end">
           <button
             className="hover:text-white active:opacity-50"
-            onClick={() => onImport()}
+            onClick={() => handleImport()}
           >
             Import
           </button>
           <button
             className="hover:text-white active:opacity-50"
-            onClick={() => onExport()}
+            onClick={() => handleExport()}
           >
             Export
           </button>
         </div>
       </header>
 
-      <form ref={formRef} onSubmit={onSubmit}>
-        <fieldset className="flex gap-2 justify-center px-3 py-2 bg-olive-600 border border-dashed border-mist-800 items-end">
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Location:</span>
-            <Input
-              className="flex-1 border-olive-600"
-              type="text"
-              name="location"
-              required
-              list="locations"
-            />
-          </label>
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Item:</span>
-            <Input
-              className="flex-1 border-olive-600"
-              type="text"
-              name="item"
-              required
-              list="items"
-            />
-          </label>
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Sell price:</span>
-            <Input
-              className="flex-1 border-olive-600"
-              type="number"
-              name="bid"
-              required
-              min="1"
-            />
-          </label>
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Buy price:</span>
-            <Input
-              className="flex-1 border-olive-600"
-              type="number"
-              name="ask"
-              required
-              min="1"
-            />
-          </label>
-          <Button key={submittedAt} type="submit" className="border-olive-600">
-            Save entry
-          </Button>
-
-          <datalist id="locations">
-            {data.locations.map((location) => (
-              <option key={location} value={location} />
-            ))}
-          </datalist>
-
-          <datalist id="items">
-            {data.items.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </fieldset>
-      </form>
+      <Form
+        ref={formRef}
+        onEntry={onEntry}
+        lists={{ items: data.items, locations: data.locations }}
+      />
 
       <hr className="h-1 border border-mist-800 bg-mist-600 border-dashed" />
 
@@ -262,29 +331,32 @@ function App() {
           </colgroup>
           <thead>
             <tr>
-              <Table.Header
-                className="font-normal text-left border-mist-800 bg-mist-700"
+              <th
+                className={twMerge(
+                  styles.th,
+                  "font-normal text-left border-mist-800 bg-mist-700",
+                )}
                 rowSpan={2}
               >
                 <input
                   type="search"
                   placeholder="Everything..."
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(event) => setQuery(event.target.value)}
                   className="w-full text-sm placeholder:text-mist-400 focus-within:outline-none"
                 />
-              </Table.Header>
-              <Table.Header
-                className="border-mist-800 bg-mist-700"
+              </th>
+              <th
+                className={twMerge(styles.th, "border-mist-800 bg-mist-700")}
                 colSpan={Math.max(1, data.locations.length)}
               >
                 Prices
-              </Table.Header>
+              </th>
             </tr>
             <tr>
               {data.locations.map((location) => (
-                <Table.Header
-                  className="border-mist-800 bg-stone-600"
+                <th
+                  className={twMerge(styles.th, "border-mist-800 bg-stone-600")}
                   key={location}
                 >
                   <Header
@@ -294,14 +366,19 @@ function App() {
                   >
                     {location}
                   </Header>
-                </Table.Header>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr key={item} className="group hover:text-white">
-                <Table.Header className="text-left border-mist-800 bg-stone-600 group-hover:bg-gray-600 ">
+                <th
+                  className={twMerge(
+                    styles.th,
+                    "text-left border-mist-800 bg-stone-600 group-hover:bg-gray-600",
+                  )}
+                >
                   <Header
                     onDelete={() =>
                       dispatch({ type: "delete-item", payload: item })
@@ -309,22 +386,20 @@ function App() {
                   >
                     {item}
                   </Header>
-                </Table.Header>
+                </th>
                 {data.locations.map((location) => {
-                  const global = getGlobalMarket(data, item);
                   const local = getLocalMarket(data, item, location);
                   const spread = getMarketGap(data, item, location);
 
                   return (
-                    <Table.Cell
-                      className="text-center border-mist-800 bg-mist-900 group-hover:bg-gray-600/30 hover:bg-gray-600/60 "
+                    <td
+                      className={twMerge(
+                        styles.td,
+                        "text-center border-mist-800 bg-mist-900 group-hover:bg-gray-600/30 hover:bg-gray-600/60",
+                      )}
                       key={`${location}-${item}`}
                       onClick={() =>
-                        quickEdit({
-                          location,
-                          item,
-                          price: local?.latest,
-                        })
+                        handlePrefill(location, item, local?.latest)
                       }
                     >
                       {local.latest.ask > 0 ? (
@@ -366,7 +441,7 @@ function App() {
                       ) : (
                         "-"
                       )}
-                    </Table.Cell>
+                    </td>
                   );
                 })}
               </tr>
