@@ -27,6 +27,8 @@ import { fmt } from "@/lib/fmt";
 import z from "zod";
 import { getFormElement, setFormValue } from "./lib/form";
 import { twMerge } from "tailwind-merge";
+import { Autocomplete } from "@base-ui/react";
+import { ArrowUpDownIcon, CircleXIcon, XIcon } from "lucide-react";
 
 const root = document.getElementById("root");
 
@@ -38,11 +40,17 @@ createRoot(root).render(<App />);
 
 const styles = {
   th: "px-3 border border-dashed",
-  td: "px-3 border border-dashed",
+  td: "border border-dashed",
   input:
-    "px-1 py-1 bg-black/30 border border-dashed focus-within:outline-none focus-within:bg-black/60",
+    "px-1 py-1 text-white bg-black/30 border border-dashed focus-within:outline-none focus-within:bg-black/60",
   button:
     "px-6 py-1 font-bold font-sm bg-yellow-600 border border-dashed hover:bg-yellow-500 hover:text-white active:opacity-50 animate-blink",
+  Autocomplete: {
+    Popup:
+      "m-1 bg-mauve-600 bg-clip-padding border border-dashed border-mauve-600 shadow-lg",
+    List: "p-1 overflow-y-auto overscroll-contain max-h-62",
+    Item: "px-2 cursor-default text-rose-100 border border-dashed border-mauve-600 data-highlighted:bg-mauve-700 data-highlighted:text-white",
+  },
 };
 
 type Action =
@@ -139,26 +147,66 @@ function Form({
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <fieldset className="flex gap-2 justify-center px-3 py-2 bg-olive-600 border border-dashed border-mist-800 items-end">
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Location:</span>
-          <input
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
-            type="text"
-            name="location"
-            required
-            list="locations"
-          />
-        </label>
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Item:</span>
-          <input
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
-            type="text"
-            name="item"
-            required
-            list="items"
-          />
-        </label>
+        <Autocomplete.Root items={lists.locations}>
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Location:</span>
+            <Autocomplete.Input
+              className={twMerge(styles.input, "flex-1 border-olive-600")}
+              type="text"
+              name="location"
+              required
+            />
+          </label>
+          <Autocomplete.Portal>
+            <Autocomplete.Positioner align="start">
+              <Autocomplete.Popup className={styles.Autocomplete.Popup}>
+                <Autocomplete.Empty />
+                <Autocomplete.List className={styles.Autocomplete.List}>
+                  {(option: string) => (
+                    <Autocomplete.Item
+                      key={option}
+                      value={option}
+                      className={styles.Autocomplete.Item}
+                    >
+                      {option}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete.List>
+              </Autocomplete.Popup>
+            </Autocomplete.Positioner>
+          </Autocomplete.Portal>
+        </Autocomplete.Root>
+
+        <Autocomplete.Root items={lists.items}>
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Item:</span>
+            <Autocomplete.Input
+              className={twMerge(styles.input, "flex-1 border-olive-600")}
+              type="text"
+              name="item"
+              required
+            />
+          </label>
+          <Autocomplete.Portal>
+            <Autocomplete.Positioner align="start">
+              <Autocomplete.Popup className={styles.Autocomplete.Popup}>
+                <Autocomplete.Empty />
+                <Autocomplete.List className={styles.Autocomplete.List}>
+                  {(option: string) => (
+                    <Autocomplete.Item
+                      key={option}
+                      className={styles.Autocomplete.Item}
+                      value={option}
+                    >
+                      {option}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete.List>
+              </Autocomplete.Popup>
+            </Autocomplete.Positioner>
+          </Autocomplete.Portal>
+        </Autocomplete.Root>
+
         <label className="flex-1 flex flex-col gap-1">
           <span className="font-medium text-sm">Sell price:</span>
           <input
@@ -186,18 +234,6 @@ function Form({
         >
           Save entry
         </button>
-
-        <datalist id="locations">
-          {lists.locations.map((location) => (
-            <option key={location} value={location} />
-          ))}
-        </datalist>
-
-        <datalist id="items">
-          {lists.items.map((item) => (
-            <option key={item} value={item} />
-          ))}
-        </datalist>
       </fieldset>
     </form>
   );
@@ -215,11 +251,11 @@ export function Header({
       <div className="text-xs">{children}</div>
 
       <button
-        className="px-2 text-yellow-100/50 hover:text-white active:opacity-50"
+        className="px-1 text-stone-400 hover:text-white active:opacity-50"
         type="button"
         onClick={() => onDelete()}
       >
-        &times;
+        <XIcon strokeWidth={5} size={12} />
       </button>
     </div>
   );
@@ -334,17 +370,24 @@ function App() {
               <th
                 className={twMerge(
                   styles.th,
-                  "font-normal text-left border-mist-800 bg-mist-700",
+                  "font-normal border-mist-800 bg-mist-700",
                 )}
                 rowSpan={2}
               >
-                <input
-                  type="search"
-                  placeholder="Everything..."
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  className="w-full text-sm placeholder:text-mist-400 focus-within:outline-none"
-                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="search"
+                    placeholder="Everything..."
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    className="min-w-0 text-sm placeholder:text-mist-400 focus-within:outline-none"
+                  />
+                  {query !== "" ? (
+                    <button onClick={() => setQuery("")}>
+                      <CircleXIcon size={16} />
+                    </button>
+                  ) : null}
+                </div>
               </th>
               <th
                 className={twMerge(styles.th, "border-mist-800 bg-mist-700")}
@@ -404,7 +447,7 @@ function App() {
                     >
                       {local.latest.ask > 0 ? (
                         <div className="grid grid-cols-[1fr_repeat(3,auto)_1fr] items-center gap-2 w-full">
-                          <span
+                          <div
                             className="text-xs text-sky-500 justify-self-end"
                             title="Premium compared to the lowest sell price."
                           >
@@ -414,19 +457,21 @@ function App() {
                                   style: "percent",
                                 })
                               : null}
-                          </span>
+                          </div>
 
-                          <span title="Sell price">
+                          <div title="Sell price">
                             {fmt.number(local.latest.bid)}
-                          </span>
+                          </div>
 
-                          <span className="text-xs text-mist-400">↑↓</span>
+                          <div className="text-mist-400">
+                            <ArrowUpDownIcon strokeWidth={3} size={12} />
+                          </div>
 
-                          <span title="Buy price">
+                          <div title="Buy price">
                             {fmt.number(local.latest.ask)}
-                          </span>
+                          </div>
 
-                          <span
+                          <div
                             className="text-xs text-lime-500 justify-self-start"
                             title="Discount compared to the highest buy price."
                           >
@@ -436,7 +481,7 @@ function App() {
                                   { style: "percent" },
                                 )
                               : null}
-                          </span>
+                          </div>
                         </div>
                       ) : (
                         "-"

@@ -19,4 +19,12 @@
     :root {
         @apply bg-mist-800 text-amber-100 font-serif;
     }
+
+    input::-webkit-search-cancel-button {
+        display: none;
+    }
+
+    input::-webkit-inner-spin-button {
+        display: none;
+    }
 }
