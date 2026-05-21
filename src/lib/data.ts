@@ -1,3 +1,5 @@
+import items from "@/data/items.json";
+
 export type Price = {
   bid: number;
   ask: number;
@@ -311,4 +313,17 @@ export function getMarketEfficiency(
     bid: global.min.bid > 0 ? local.latest.bid / global.min.bid : 0,
     ask: global.max.ask > 0 ? local.latest.ask / global.max.ask : 0,
   };
+}
+
+export function matchItem(query: string, item: string) {
+  if (query.length === 0) {
+    return true;
+  }
+  if (item.toLowerCase().includes(query.toLowerCase())) {
+    return true;
+  }
+  if (item in items) {
+    return items[item as keyof typeof items].toLowerCase().includes(query.toLowerCase());
+  }
+  return false;
 }

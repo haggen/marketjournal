@@ -10,8 +10,6 @@ import {
   type ComponentProps,
   type KeyboardEvent,
   type ChangeEvent,
-  type FocusEvent,
-  type MouseEvent,
   Fragment,
 } from "react";
 import { createRoot } from "react-dom/client";
@@ -24,6 +22,7 @@ import {
   getInitialData,
   getLocalMarket,
   getMarketGap,
+  matchItem,
   migrate,
   type Data,
   type Entry,
@@ -61,8 +60,13 @@ const styles = {
 
 function Autocomplete({
   data,
+  filter = (query, option) =>
+    option.toLowerCase().includes(query.toLowerCase()),
   ...props
-}: { data: string[] } & ComponentProps<"input">) {
+}: {
+  data: string[];
+  filter?: (query: string, option: string) => boolean;
+} & ComponentProps<"input">) {
   const [internalValue, setInternalValue] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,9 +81,7 @@ function Autocomplete({
   });
 
   const options = data
-    .filter((option) =>
-      option.toLowerCase().includes(internalValue.toLowerCase() ?? ""),
-    )
+    .filter((option) => filter(internalValue, option))
     .sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
@@ -263,6 +265,7 @@ function Form({
             type="text"
             name="item"
             required
+            filter={(q, i) => matchItem(q, i)}
             data={lists.items}
           />
         </label>
@@ -394,7 +397,7 @@ function App() {
 
   const items = useMemo(() => {
     return [...data.items]
-      .filter((item) => item.toLowerCase().includes(query.toLowerCase()))
+      .filter((item) => matchItem(query, item))
       .sort((a, b) => {
         const marketA = getGlobalMarket(data, a);
         const marketB = getGlobalMarket(data, b);
