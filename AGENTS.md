@@ -1,8 +1,9 @@
-# Guidelines
+# Development guidelines for humans and AI
 
-1. Simple is better than complex.
-2. Complex is better than complicated.
-3. The best solutions solve many things at once.
-3. Readability trumps everything else.
-4. Work incrementally, breaking down issues in steps or revisions to achieve a final goal.
-4. Plan and report before making changes.
+- Simple is better than complex. Complex is better than complicated.
+- Good solutions fix the problem. Great solutions fix many problems.
+- Readability is the most important property of code.
+- Work incrementally. Break down goals into steps or intermediary versions.
+- Choose generic names in specific contexts and specific names in generic contexts.
+- Plan and report before making changes.
+- Some repetition is better than a bad abstraction.

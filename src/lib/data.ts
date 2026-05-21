@@ -12,8 +12,13 @@ export type Entry = {
   price: Price;
 };
 
-// [timestamp, item, location, bid, ask]
-export type EntryTuple = [number, string, string, number, number];
+export type EntryTuple = [
+  timestamp: number,
+  item: string,
+  location: string,
+  bid: number,
+  ask: number,
+];
 
 export type GlobalMarket = {
   min: Price;
@@ -297,33 +302,30 @@ export function getMarketGap(data: Data, item: string, location: string) {
   };
 }
 
-export function getMarketEfficiency(
-  data: Data,
-  item: string,
-  location: string,
-) {
-  const local = getLocalMarket(data, item, location);
+export function getMarketSpread(data: Data, item: string) {
   const global = getGlobalMarket(data, item);
 
-  if (!local || !global) {
-    return { bid: 0, ask: 0 };
+  if (!global) {
+    return 0;
   }
 
-  return {
-    bid: global.min.bid > 0 ? local.latest.bid / global.min.bid : 0,
-    ask: global.max.ask > 0 ? local.latest.ask / global.max.ask : 0,
-  };
+  return global.max.ask - global.min.bid;
 }
 
 export function matchItem(query: string, item: string) {
   if (query.length === 0) {
     return true;
   }
+
   if (item.toLowerCase().includes(query.toLowerCase())) {
     return true;
   }
+
   if (item in items) {
-    return items[item as keyof typeof items].toLowerCase().includes(query.toLowerCase());
+    return items[item as keyof typeof items]
+      .toLowerCase()
+      .includes(query.toLowerCase());
   }
+
   return false;
 }

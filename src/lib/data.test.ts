@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import {
   addEntry,
   createEmptyData,
@@ -8,61 +8,32 @@ import {
   getInitialData,
   getLocalMarket,
   getMarketGap,
+  getMarketSpread,
   migrate,
   type Entry,
   type EntryTuple,
 } from "./data";
 
-function createMockStorage(initial: Record<string, string> = {}): Storage {
-  const store = new Map(Object.entries(initial));
-
-  return {
-    get length() {
-      return store.size;
-    },
-    clear() {
-      store.clear();
-    },
-    getItem(key: string) {
-      return store.get(key) ?? null;
-    },
-    key(index: number) {
-      return Array.from(store.keys())[index] ?? null;
-    },
-    removeItem(key: string) {
-      store.delete(key);
-    },
-    setItem(key: string, value: string) {
-      store.set(key, value);
-    },
-  };
-}
-
-function buildEntry(
+function createEntry(
   timestamp: number,
   item: string,
   location: string,
   bid: number,
   ask: number,
 ): Entry {
-  return {
-    timestamp,
-    item,
-    location,
-    price: { bid, ask },
-  };
+  return { timestamp, item, location, price: { bid, ask } };
 }
 
-beforeEach(() => {
+function fakeStorage(value: string | null = null) {
   Object.defineProperty(globalThis, "localStorage", {
-    value: createMockStorage(),
+    value: { getItem: () => value },
     configurable: true,
     writable: true,
   });
-});
+}
 
 describe("createEmptyData", () => {
-  it("returns an empty v5 data shape", () => {
+  it("creates a fresh dataset with no entries, items, or locations", () => {
     const data = createEmptyData();
 
     expect(data.version).toBe(5);
@@ -75,60 +46,85 @@ describe("createEmptyData", () => {
 });
 
 describe("migrate", () => {
-  it("migrates v3 data entries to v5 market shape", () => {
+  it("upgrades v3 data, converting flat prices to bid/ask pairs and building the market index", () => {
     const legacy = {
       version: 3,
       entries: [
-        { timestamp: 1, item: "ore", location: "town", price: 10 },
-        { timestamp: 2, item: "ore", location: "city", price: 14 },
+        { timestamp: 1, item: "Thin Hide", location: "Thetford", price: 100 },
+        {
+          timestamp: 2,
+          item: "Thin Hide",
+          location: "Fort Sterling",
+          price: 140,
+        },
       ],
-      items: ["ore"],
-      locations: ["town", "city"],
-      index: { old: true },
+      items: [],
+      locations: [],
+      index: {},
     } as any;
 
     migrate(legacy);
 
     expect(legacy.version).toBe(5);
     expect(legacy.index).toBeUndefined();
-    expect(legacy.items).toEqual(["ore"]);
-    expect(legacy.locations.sort()).toEqual(["city", "town"]);
+    expect(legacy.items).toEqual(["Thin Hide"]);
+    expect(legacy.locations.sort()).toEqual(["Fort Sterling", "Thetford"]);
 
-    const global = legacy.market.global["ore"];
+    expect(legacy.market.local["Thin Hide-Thetford"].latest).toEqual({
+      bid: 100,
+      ask: 100,
+    });
+    expect(legacy.market.local["Thin Hide-Fort Sterling"].latest).toEqual({
+      bid: 140,
+      ask: 140,
+    });
+
+    const global = legacy.market.global["Thin Hide"];
     expect(global.count).toBe(2);
-    expect(global.average).toEqual({ bid: 12, ask: 12 });
-    expect(global.min).toEqual({ bid: 10, ask: 10 });
-    expect(global.max).toEqual({ bid: 14, ask: 14 });
-
-    expect(legacy.market.local["ore-town"].latest).toEqual({
-      bid: 10,
-      ask: 10,
-    });
-    expect(legacy.market.local["ore-city"].latest).toEqual({
-      bid: 14,
-      ask: 14,
-    });
+    expect(global.min).toEqual({ bid: 100, ask: 100 });
+    expect(global.max).toEqual({ bid: 140, ask: 140 });
+    expect(global.average).toEqual({ bid: 120, ask: 120 });
   });
 
-  it("migrates v4 entries to v5 tuples", () => {
+  it("skips malformed entries during v3 migration", () => {
+    const legacy = {
+      version: 3,
+      entries: [
+        { timestamp: 1, item: "Thin Hide", location: "Thetford", price: 100 },
+        { item: "Thin Hide", location: "Fort Sterling" }, // missing timestamp and price
+        null,
+        { timestamp: 2, item: "Rough Log", location: "Thetford", price: 80 },
+      ],
+      items: [],
+      locations: [],
+      index: {},
+    } as any;
+
+    migrate(legacy);
+
+    expect(legacy.items).toEqual(["Thin Hide", "Rough Log"]);
+    expect(legacy.entries).toHaveLength(2);
+  });
+
+  it("upgrades v4 data, converting entry objects to tuples", () => {
     const v4data = {
       version: 4,
       entries: [
         {
           timestamp: 1,
-          item: "ore",
-          location: "town",
-          price: { bid: 10, ask: 12 },
+          item: "Thin Hide",
+          location: "Thetford",
+          price: { bid: 100, ask: 120 },
         },
         {
           timestamp: 2,
-          item: "ore",
-          location: "city",
-          price: { bid: 20, ask: 24 },
+          item: "Thin Hide",
+          location: "Fort Sterling",
+          price: { bid: 200, ask: 240 },
         },
       ] as Entry[],
-      items: ["ore"],
-      locations: ["town", "city"],
+      items: ["Thin Hide"],
+      locations: ["Thetford", "Fort Sterling"],
       market: { local: {}, global: {} },
     } as any;
 
@@ -136,12 +132,12 @@ describe("migrate", () => {
 
     expect(v4data.version).toBe(5);
     expect(v4data.entries).toEqual<EntryTuple[]>([
-      [1, "ore", "town", 10, 12],
-      [2, "ore", "city", 20, 24],
+      [1, "Thin Hide", "Thetford", 100, 120],
+      [2, "Thin Hide", "Fort Sterling", 200, 240],
     ]);
   });
 
-  it("leaves non-v3/v4 data unchanged", () => {
+  it("leaves v5 data unchanged", () => {
     const current = createEmptyData();
     migrate(current);
     expect(current.version).toBe(5);
@@ -152,154 +148,282 @@ describe("migrate", () => {
 
 describe("getInitialData", () => {
   it("returns empty data when storage is empty", () => {
-    const data = getInitialData();
-    expect(data).toEqual(createEmptyData());
+    fakeStorage(null);
+    expect(getInitialData()).toEqual(createEmptyData());
   });
 
-  it("loads and migrates stored v3 data", () => {
-    const storedV3 = {
+  it("returns stored data as-is when already current", () => {
+    const current = createEmptyData();
+    addEntry(current, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+
+    fakeStorage(JSON.stringify(current));
+
+    expect(getInitialData()).toEqual(current);
+  });
+
+  it("migrates outdated data from storage on load", () => {
+    const stored = {
       version: 3,
-      entries: [{ timestamp: 1, item: "fish", location: "dock", price: 30 }],
+      entries: [
+        { timestamp: 1, item: "Raw Fish", location: "Martlock", price: 300 },
+      ],
       items: [],
       locations: [],
       index: {},
     };
 
-    localStorage.setItem("data", JSON.stringify(storedV3));
+    fakeStorage(JSON.stringify(stored));
 
     const data = getInitialData();
 
     expect(data.version).toBe(5);
-    expect(data.items).toEqual(["fish"]);
-    expect(data.locations).toEqual(["dock"]);
-    expect(data.market.global["fish"]?.average).toEqual({ bid: 30, ask: 30 });
+    expect(data.items).toEqual(["Raw Fish"]);
+    expect(data.locations).toEqual(["Martlock"]);
+    expect(data.market.global["Raw Fish"]?.average).toEqual({
+      bid: 300,
+      ask: 300,
+    });
   });
 });
 
 describe("addEntry", () => {
-  it("adds first entry and initializes local/global markets", () => {
+  it("records the first entry for a new item and location", () => {
     const data = createEmptyData();
 
-    addEntry(data, buildEntry(1, "ore", "town", 10, 12));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
 
-    expect(data.entries).toHaveLength(1);
-    expect(data.items).toEqual(["ore"]);
-    expect(data.locations).toEqual(["town"]);
-
-    expect(data.market.local["ore-town"]?.latest).toEqual({ bid: 10, ask: 12 });
-    expect(data.market.global["ore"]?.count).toBe(1);
-    expect(data.market.global["ore"]?.average).toEqual({ bid: 10, ask: 12 });
-    expect(data.market.global["ore"]?.min).toEqual({ bid: 10, ask: 12 });
-    expect(data.market.global["ore"]?.max).toEqual({ bid: 10, ask: 12 });
+    expect(data.entries).toEqual([[1, "Thin Hide", "Thetford", 100, 120]]);
+    expect(data.items).toEqual(["Thin Hide"]);
+    expect(data.locations).toEqual(["Thetford"]);
+    expect(data.market.local["Thin Hide-Thetford"]).toEqual({
+      latest: { bid: 100, ask: 120 },
+    });
+    expect(data.market.global["Thin Hide"]).toEqual({
+      count: 1,
+      average: { bid: 100, ask: 120 },
+      min: { bid: 100, ask: 120 },
+      max: { bid: 100, ask: 120 },
+    });
   });
 
-  it("updates averages correctly when replacing an existing location price", () => {
+  it("tracks a second location, updating the count and average", () => {
     const data = createEmptyData();
 
-    addEntry(data, buildEntry(1, "ore", "town", 10, 12));
-    addEntry(data, buildEntry(2, "ore", "city", 20, 24));
-    addEntry(data, buildEntry(3, "ore", "town", 14, 16));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
 
-    expect(data.market.global["ore"]?.count).toBe(2);
-    expect(data.market.global["ore"]?.average).toEqual({ bid: 17, ask: 20 });
-    expect(data.market.global["ore"]?.min).toEqual({ bid: 14, ask: 16 });
-    expect(data.market.global["ore"]?.max).toEqual({ bid: 20, ask: 24 });
+    expect(data.market.global["Thin Hide"]?.count).toBe(2);
+    expect(data.market.global["Thin Hide"]?.average).toEqual({
+      bid: 150,
+      ask: 180,
+    });
+    expect(data.market.global["Thin Hide"]?.min).toEqual({
+      bid: 100,
+      ask: 120,
+    });
+    expect(data.market.global["Thin Hide"]?.max).toEqual({
+      bid: 200,
+      ask: 240,
+    });
+  });
+
+  it("updates an existing location price without changing the count", () => {
+    const data = createEmptyData();
+
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
+    addEntry(data, createEntry(3, "Thin Hide", "Thetford", 140, 160));
+
+    expect(data.market.local["Thin Hide-Thetford"]).toEqual({
+      latest: { bid: 140, ask: 160 },
+    });
+    expect(data.market.global["Thin Hide"]?.count).toBe(2);
+    expect(data.market.global["Thin Hide"]?.average).toEqual({
+      bid: 170,
+      ask: 200,
+    });
+    expect(data.market.global["Thin Hide"]?.min).toEqual({
+      bid: 140,
+      ask: 160,
+    });
+    expect(data.market.global["Thin Hide"]?.max).toEqual({
+      bid: 200,
+      ask: 240,
+    });
   });
 });
 
 describe("deleteItem", () => {
-  it("removes item entries and corresponding market data", () => {
+  it("removes all entries and market data for the item", () => {
     const data = createEmptyData();
 
-    addEntry(data, buildEntry(1, "ore", "town", 10, 10));
-    addEntry(data, buildEntry(2, "ore", "city", 12, 12));
-    addEntry(data, buildEntry(3, "wood", "town", 8, 8));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 100));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 120, 120));
 
-    deleteItem(data, "ore");
+    deleteItem(data, "Thin Hide");
 
-    expect(data.items).toEqual(["wood"]);
-    expect(data.entries.every((entry) => entry[1] !== "ore")).toBe(true);
-    expect(data.market.global["ore"]).toBeUndefined();
-    expect(data.market.local["ore-town"]).toBeUndefined();
-    expect(data.market.local["ore-city"]).toBeUndefined();
-    expect(data.market.global["wood"]).toBeDefined();
+    expect(data.items).toEqual([]);
+    expect(data.entries).toEqual([]);
+    expect(data.market.global["Thin Hide"]).toBeUndefined();
+    expect(data.market.local["Thin Hide-Thetford"]).toBeUndefined();
+    expect(data.market.local["Thin Hide-Fort Sterling"]).toBeUndefined();
+  });
+
+  it("does not affect other items", () => {
+    const data = createEmptyData();
+
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 100));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 120, 120));
+    addEntry(data, createEntry(3, "Rough Log", "Thetford", 80, 80));
+
+    deleteItem(data, "Thin Hide");
+
+    expect(data.items).toEqual(["Rough Log"]);
+    expect(data.entries).toEqual([[3, "Rough Log", "Thetford", 80, 80]]);
+    expect(data.market.global["Rough Log"]).toBeDefined();
+    expect(data.market.local["Rough Log-Thetford"]).toBeDefined();
   });
 });
 
 describe("deleteLocation", () => {
-  it("removes location entries and updates globals", () => {
+  it("removes all entries and local market data for the location", () => {
     const data = createEmptyData();
 
-    addEntry(data, buildEntry(1, "ore", "town", 10, 10));
-    addEntry(data, buildEntry(2, "ore", "city", 20, 20));
-    addEntry(data, buildEntry(3, "wood", "town", 5, 5));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
 
-    deleteLocation(data, "town");
+    deleteLocation(data, "Thetford");
 
-    expect(data.locations).toEqual(["city"]);
-    expect(data.entries.every((entry) => entry[2] !== "town")).toBe(true);
+    expect(data.locations).toEqual([]);
+    expect(data.entries).toEqual([]);
+    expect(data.market.local["Thin Hide-Thetford"]).toBeUndefined();
+    expect(data.market.global["Thin Hide"]).toBeUndefined();
+  });
 
-    expect(data.market.local["ore-town"]).toBeUndefined();
-    expect(data.market.local["wood-town"]).toBeUndefined();
+  it("removes the global market for items with no remaining locations, and recalculates it for those that do", () => {
+    const data = createEmptyData();
 
-    expect(data.market.global["wood"]).toBeUndefined();
-    expect(data.market.global["ore"]?.count).toBe(1);
-    expect(data.market.global["ore"]?.average).toEqual({ bid: 20, ask: 20 });
-    expect(data.market.global["ore"]?.min).toEqual({ bid: 20, ask: 20 });
-    expect(data.market.global["ore"]?.max).toEqual({ bid: 20, ask: 20 });
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 100));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 200));
+    addEntry(data, createEntry(3, "Rough Log", "Thetford", 50, 50));
+
+    deleteLocation(data, "Thetford");
+
+    expect(data.locations).toEqual(["Fort Sterling"]);
+
+    // Rough Log had only Thetford — its global is dropped
+    expect(data.market.local["Rough Log-Thetford"]).toBeUndefined();
+    expect(data.market.global["Rough Log"]).toBeUndefined();
+
+    // Thin Hide still has Fort Sterling — its global is recalculated
+    expect(data.market.local["Thin Hide-Thetford"]).toBeUndefined();
+    expect(data.market.global["Thin Hide"]?.count).toBe(1);
+    expect(data.market.global["Thin Hide"]?.average).toEqual({
+      bid: 200,
+      ask: 200,
+    });
+    expect(data.market.global["Thin Hide"]?.min).toEqual({
+      bid: 200,
+      ask: 200,
+    });
+    expect(data.market.global["Thin Hide"]?.max).toEqual({
+      bid: 200,
+      ask: 200,
+    });
   });
 });
 
 describe("getLocalMarket", () => {
-  it("returns local market when present", () => {
+  it("returns the stored prices for a known location", () => {
     const data = createEmptyData();
-    addEntry(data, buildEntry(1, "ore", "town", 10, 11));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 110));
 
-    expect(getLocalMarket(data, "ore", "town")).toEqual({
-      latest: { bid: 10, ask: 11 },
+    expect(getLocalMarket(data, "Thin Hide", "Thetford")).toEqual({
+      latest: { bid: 100, ask: 110 },
     });
   });
 
-  it("returns zeros when local market is missing", () => {
+  it("returns zero prices for an unknown location", () => {
     const data = createEmptyData();
 
-    expect(getLocalMarket(data, "ore", "town")).toEqual({
+    expect(getLocalMarket(data, "Thin Hide", "Thetford")).toEqual({
       latest: { bid: 0, ask: 0 },
     });
   });
 });
 
 describe("getGlobalMarket", () => {
-  it("returns global market when present", () => {
+  it("returns the aggregated market data for a known item", () => {
     const data = createEmptyData();
-    addEntry(data, buildEntry(1, "ore", "town", 10, 11));
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 110));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 220));
 
-    expect(getGlobalMarket(data, "ore")).toEqual({
-      count: 1,
-      min: { bid: 10, ask: 11 },
-      max: { bid: 10, ask: 11 },
-      average: { bid: 10, ask: 11 },
+    expect(getGlobalMarket(data, "Thin Hide")).toEqual({
+      count: 2,
+      average: { bid: 150, ask: 165 },
+      min: { bid: 100, ask: 110 },
+      max: { bid: 200, ask: 220 },
     });
   });
 
-  it("returns zeros when global market is missing", () => {
+  it("returns zero data for an unknown item", () => {
     const data = createEmptyData();
 
-    expect(getGlobalMarket(data, "ore")).toEqual({
+    expect(getGlobalMarket(data, "Thin Hide")).toEqual({
+      count: 0,
+      average: { bid: 0, ask: 0 },
       min: { bid: 0, ask: 0 },
       max: { bid: 0, ask: 0 },
-      average: { bid: 0, ask: 0 },
-      count: 0,
     });
   });
 });
 
-describe("getSpread", () => {
-  it("computes spread from global and local prices", () => {
+describe("getMarketGap", () => {
+  it("returns zero gap when the item has no data", () => {
     const data = createEmptyData();
-    addEntry(data, buildEntry(1, "ore", "town", 15, 17));
-    addEntry(data, buildEntry(2, "ore", "city", 25, 30));
 
-    expect(getMarketGap(data, "ore", "city")).toEqual({ bid: 10, ask: 0 });
+    expect(getMarketGap(data, "Thin Hide", "Thetford")).toEqual({
+      bid: 0,
+      ask: 0,
+    });
+  });
+
+  it("returns zero bid gap at the cheapest location", () => {
+    const data = createEmptyData();
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
+
+    // Thetford has the global minimum bid, so it has nowhere cheaper to buy from
+    expect(getMarketGap(data, "Thin Hide", "Thetford")).toEqual({
+      bid: 0,
+      ask: 120,
+    });
+  });
+
+  it("returns zero ask gap at the most expensive location", () => {
+    const data = createEmptyData();
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
+
+    // Fort Sterling has the global maximum ask, so there is nowhere more expensive to sell to
+    expect(getMarketGap(data, "Thin Hide", "Fort Sterling")).toEqual({
+      bid: 100,
+      ask: 0,
+    });
+  });
+});
+
+describe("getMarketSpread", () => {
+  it("returns zero when the item has no data", () => {
+    const data = createEmptyData();
+
+    expect(getMarketSpread(data, "Thin Hide")).toBe(0);
+  });
+
+  it("returns the spread between the lowest bid and highest ask across all locations", () => {
+    const data = createEmptyData();
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
+
+    expect(getMarketSpread(data, "Thin Hide")).toBe(140); // 240 - 100
   });
 });
