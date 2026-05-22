@@ -1,11 +1,9 @@
 import {
-  Fragment,
   useEffect,
   useRef,
-  useState,
-  type InputEvent,
   type ComponentProps,
   type KeyboardEvent,
+  useReducer,
 } from "react";
 import { useFloating } from "@floating-ui/react";
 import { twMerge } from "tailwind-merge";
@@ -19,34 +17,57 @@ export function Autocomplete({
   data: string[];
   filter?: (query: string, option: string) => boolean;
 } & ComponentProps<"input">) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const [state, update] = useReducer(
+    (state, patch) => ({ ...state, ...patch }),
+    {
+      query: "",
+      open: false,
+      highlighted: -1,
+    },
+  );
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
-  const [selected, setSelected] = useState(-1);
-  const { refs, floatingStyles } = useFloating({
+
+  const { floatingStyles } = useFloating({
     placement: "bottom-start",
     elements: {
+      floating: floatingRef.current,
       reference: inputRef.current,
     },
   });
 
-  const options = data
-    .filter((option) => filter(query, option))
-    .sort((a, b) => a.localeCompare(b));
+  useEffect(() => {
+    const handleBlur = (event: FocusEvent | MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        handleClose();
+      }
+    };
+    document.addEventListener("focusin", handleBlur);
+    document.addEventListener("click", handleBlur);
+
+    return () => {
+      document.removeEventListener("focusin", handleBlur);
+      document.removeEventListener("click", handleBlur);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!open || selected < 0) {
+    if (!listRef.current) {
       return;
     }
 
-    const option = listRef.current?.children.item(selected);
+    if (!state.open) {
+      return;
+    }
 
-    if (option instanceof HTMLElement) {
+    const option = listRef.current.children[state.highlighted];
+    if (option) {
       option.scrollIntoView({ block: "nearest" });
     }
-  }, [open, selected, options]);
+  }, [state.highlighted, state.open]);
 
   const setValue = (value: string) => {
     if (inputRef.current) {
@@ -54,63 +75,87 @@ export function Autocomplete({
     }
   };
 
-  const handleInput = (event: InputEvent<HTMLInputElement>) => {
-    setOpen(true);
-    setSelected(-1);
-    setQuery(event.currentTarget.value);
+  const handleOpen = () => {
+    update({ open: true });
   };
 
-  const handleConfirm = (value: string) => {
+  const handleClose = () => {
+    update({ open: false });
+  };
+
+  const handleInput = (query: string) => {
+    update({
+      query,
+      open: true,
+      highlighted: Math.max(
+        -1,
+        Math.min(state.highlighted, options.length - 1),
+      ),
+    });
+  };
+
+  const handleComplete = (value: string) => {
     setValue(value);
-    setQuery("");
-    setOpen(false);
+    update({ open: false, query: "" });
   };
 
-  const handleFocus = () => {
-    setOpen(true);
-    setQuery("");
+  const handleHighlight = (index: number) => {
+    update({
+      open: true,
+      highlighted: Math.max(0, Math.min(index, options.length - 1)),
+    });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
-      event.preventDefault();
-      if (options.length > 0) {
-        setSelected((index) => Math.min(index + 1, options.length - 1));
+      if (state.open) {
+        event.preventDefault();
+        handleHighlight(state.highlighted + 1);
+      } else if (
+        inputRef.current?.selectionStart === inputRef.current?.value.length
+      ) {
+        handleOpen();
       }
     } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      if (options.length > 0) {
-        setSelected((index) => Math.max(index - 1, 0));
-      }
-    } else if (event.key === "Enter" && selected >= 0) {
-      if (open) {
+      if (state.open) {
         event.preventDefault();
-        if (!options[selected]) {
-          throw new Error("Selected option not found");
+        handleHighlight(state.highlighted - 1);
+      }
+    } else if (event.key === "Enter") {
+      if (state.open && state.highlighted >= 0) {
+        event.preventDefault();
+        const option = options[state.highlighted];
+        if (option) {
+          handleComplete(option);
         }
-        handleConfirm(options[selected]);
       }
     } else if (event.key === "Escape") {
-      setOpen(false);
+      if (state.open) {
+        event.preventDefault();
+        handleClose();
+      }
     }
   };
 
+  const options = data
+    .filter((option) => filter(state.query, option))
+    .sort((a, b) => a.localeCompare(b));
+
   return (
-    <Fragment>
+    <div ref={containerRef} className="contents">
       <input
         ref={inputRef}
-        onFocus={handleFocus}
-        onBlur={() => setOpen(false)}
-        onInput={handleInput}
+        onFocus={handleOpen}
+        onInput={(e) => handleInput(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
         {...props}
       />
 
       <div
-        ref={refs.setFloating}
+        ref={floatingRef}
         className={twMerge(
           "m-1 rounded tear-off-mauve-600 shadow-lg",
-          open ? "" : "hidden",
+          state.open ? "" : "hidden",
         )}
         style={floatingStyles}
       >
@@ -119,24 +164,21 @@ export function Autocomplete({
           tabIndex={-1}
           role="listbox"
           className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin"
-          onMouseLeave={() => {
-            lastMousePositionRef.current = null;
-          }}
         >
           {options.map((option, index) => (
             <div
               key={option}
               role="option"
-              className="px-2 cursor-default text-rose-100 rounded-sm tear-off-mauve-600 data-selected:tear-off-mauve-700 data-selected:text-white"
-              onMouseMove={() => setSelected(index)}
-              onMouseDown={() => handleConfirm(option)}
-              data-selected={selected === index || undefined}
+              className="px-2 cursor-default text-rose-100 rounded-sm tear-off-mauve-600 data-highlighted:tear-off-mauve-700 data-highlighted:text-white"
+              onMouseMove={() => handleHighlight(index)}
+              onMouseDown={() => handleComplete(option)}
+              data-highlighted={state.highlighted === index || undefined}
             >
               {option}
             </div>
           ))}
         </div>
       </div>
-    </Fragment>
+    </div>
   );
 }

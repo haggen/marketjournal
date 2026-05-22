@@ -7,3 +7,4 @@
 - Choose generic names in specific contexts and specific names in generic contexts.
 - Plan and report before making changes.
 - Some repetition is better than a bad abstraction.
+- After changes review names and code around the change so it stays coherent, readable and efficient.

@@ -5,12 +5,10 @@ import {
   type Ref,
   type SubmitEvent,
 } from "react";
-import { twMerge } from "tailwind-merge";
 import z from "zod";
 import { type Entry, matchItem } from "@/lib/data";
 import { getFormElement, setFormValue } from "@/lib/form";
 import { Autocomplete } from "./Autocomplete";
-import { styles } from "../lib/styles";
 
 export type FormHandle = {
   prefill(entry: Omit<Entry, "timestamp">): void;

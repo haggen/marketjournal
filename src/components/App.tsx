@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { DeleteIcon, DollarSignIcon, XIcon } from "lucide-react";
+import { DeleteIcon, XIcon } from "lucide-react";
 import {
   addEntry,
   createEmptyData,
   deleteItem,
   deleteLocation,
+  getNetProfit,
   getInitialData,
-  getLocalMarket,
-  getMarketSpread,
   matchItem,
   migrate,
   type Data,
@@ -17,6 +16,7 @@ import { immutable } from "@/lib/immutable";
 import { Form, type FormHandle } from "@/components/Form";
 import { Header } from "@/components/Header";
 import { Price } from "./Price";
+import { fmt } from "@/lib/fmt";
 
 type Action =
   | { type: "import"; payload: Data }
@@ -53,11 +53,8 @@ function reducer(data: Data, action: Action) {
 
 export function App() {
   const [data, dispatch] = useReducer(reducer, null, getInitialData);
-  const formRef = useRef<FormHandle>(null);
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<["spread"] | ["bid" | "ask", string]>([
-    "spread",
-  ]);
+  const formRef = useRef<FormHandle>(null);
 
   useEffect(() => {
     localStorage.setItem("data", JSON.stringify(data));
@@ -71,28 +68,9 @@ export function App() {
     return [...data.items]
       .filter((item) => matchItem(query, item))
       .sort((a, b) => {
-        if (sortKey.length === 2) {
-          const latestA = getLocalMarket(data, a, sortKey[1]).latest[
-            sortKey[0]
-          ];
-          const latestB = getLocalMarket(data, b, sortKey[1]).latest[
-            sortKey[0]
-          ];
-
-          if (latestA === 0 && latestB !== 0) {
-            return 1;
-          }
-
-          if (latestB === 0 && latestA !== 0) {
-            return -1;
-          }
-
-          return (latestB - latestA) * (sortKey[0] === "ask" ? -1 : 1);
-        }
-
-        return getMarketSpread(data, b) - getMarketSpread(data, a);
+        return getNetProfit(data, b) - getNetProfit(data, a);
       });
-  }, [data, query, sortKey]);
+  }, [data, query]);
 
   const handlePrefill = (
     location: string,
@@ -105,17 +83,6 @@ export function App() {
         item,
         price: price ?? { bid: 0, ask: 0 },
       });
-    }
-  };
-
-  const handleSort = (key: string) => {
-    if (key === "spread") {
-      setSortKey([key]);
-    } else {
-      setSortKey([
-        sortKey[1] === key && sortKey[0] === "ask" ? "bid" : "ask",
-        key,
-      ]);
     }
   };
 
@@ -205,9 +172,10 @@ export function App() {
                 </div>
               </th>
 
-              <th className="px-2 rounded tear-off-stone-500">
-                <DollarSignIcon strokeWidth={3} size={12} className="mx-auto" />
+              <th className="px-2 rounded tear-off-stone-500 text-sm">
+                Profit
               </th>
+
               {data.locations.map((location) => (
                 <th
                   className="px-2 rounded tear-off-stone-500 group"
@@ -256,7 +224,7 @@ export function App() {
                   </Header>
                 </th>
                 <td className="text-center rounded tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700">
-                  {getMarketSpread(data, item)}
+                  {fmt.number(getNetProfit(data, item))}
                 </td>
                 {data.locations.map((location) => (
                   <Price

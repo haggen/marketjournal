@@ -8,6 +8,7 @@ import {
   getInitialData,
   getLocalMarket,
   getMarketGap,
+  getNetProfit,
   getMarketSpread,
   migrate,
   type Entry,
@@ -419,11 +420,21 @@ describe("getMarketSpread", () => {
     expect(getMarketSpread(data, "Thin Hide")).toBe(0);
   });
 
-  it("returns the spread between the lowest bid and highest ask across all locations", () => {
+  it("returns the spread between the highest bid and lowest ask across all locations", () => {
     const data = createEmptyData();
     addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
     addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
 
-    expect(getMarketSpread(data, "Thin Hide")).toBe(140); // 240 - 100
+    expect(getMarketSpread(data, "Thin Hide")).toBe(80); // 200 - 120
+  });
+});
+
+describe("getNetProfit", () => {
+  it("subtracts the buy-side fee from the positive spread", () => {
+    const data = createEmptyData();
+    addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 120));
+    addEntry(data, createEntry(2, "Thin Hide", "Fort Sterling", 200, 240));
+
+    expect(getNetProfit(data, "Thin Hide")).toBeCloseTo(69.8);
   });
 });

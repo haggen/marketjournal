@@ -309,7 +309,17 @@ export function getMarketSpread(data: Data, item: string) {
     return 0;
   }
 
-  return global.max.ask - global.min.bid;
+  return global.max.bid - global.min.ask;
+}
+
+export function getNetProfit(data: Data, item: string, fee = 0.085) {
+  const spread = getMarketSpread(data, item);
+
+  if (spread === 0) {
+    return 0;
+  }
+
+  return spread - getGlobalMarket(data, item).min.ask * fee;
 }
 
 export function matchItem(query: string, item: string) {
