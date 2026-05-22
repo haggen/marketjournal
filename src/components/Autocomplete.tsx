@@ -163,7 +163,7 @@ export function Autocomplete({
           ref={listRef}
           tabIndex={-1}
           role="listbox"
-          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin"
+          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-mauve-900"
         >
           {options.map((option, index) => (
             <div

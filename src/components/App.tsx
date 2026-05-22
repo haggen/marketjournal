@@ -224,7 +224,9 @@ export function App() {
                   </Header>
                 </th>
                 <td className="text-center rounded tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700">
-                  {fmt.number(getNetProfit(data, item))}
+                  {fmt.number(getNetProfit(data, item), {
+                    maximumFractionDigits: 0,
+                  })}
                 </td>
                 {data.locations.map((location) => (
                   <Price
