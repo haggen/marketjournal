@@ -86,7 +86,7 @@ export function Autocomplete({
       if (open) {
         event.preventDefault();
         if (!options[selected]) {
-          throw new Error("Highlighted option not found");
+          throw new Error("Selected option not found");
         }
         handleConfirm(options[selected]);
       }
@@ -109,7 +109,7 @@ export function Autocomplete({
       <div
         ref={refs.setFloating}
         className={twMerge(
-          "m-1 tear-off-mauve-600 shadow-lg",
+          "m-1 rounded tear-off-mauve-600 shadow-lg",
           open ? "" : "hidden",
         )}
         style={floatingStyles}
@@ -118,7 +118,7 @@ export function Autocomplete({
           ref={listRef}
           tabIndex={-1}
           role="listbox"
-          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62"
+          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin"
           onMouseLeave={() => {
             lastMousePositionRef.current = null;
           }}
@@ -127,10 +127,10 @@ export function Autocomplete({
             <div
               key={option}
               role="option"
-              className="px-2 cursor-default text-rose-100 border border-dashed border-mauve-600 data-highlighted:bg-mauve-700 data-highlighted:text-white"
+              className="px-2 cursor-default text-rose-100 rounded-sm tear-off-mauve-600 data-selected:tear-off-mauve-700 data-selected:text-white"
               onMouseMove={() => setSelected(index)}
               onMouseDown={() => handleConfirm(option)}
-              data-highlighted={selected === index || undefined}
+              data-selected={selected === index || undefined}
             >
               {option}
             </div>

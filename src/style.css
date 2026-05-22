@@ -20,6 +20,10 @@
         @apply bg-mist-800 text-amber-50 font-serif;
     }
 
+    html {
+        scrollbar-gutter: stable;
+    }
+
     input::-webkit-search-cancel-button {
         display: none;
     }

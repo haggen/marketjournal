@@ -75,11 +75,11 @@ export function Form({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="scroll-m-2">
-      <fieldset className="flex gap-2 justify-center p-2 tear-off-olive-500 items-end">
+      <fieldset className="flex gap-2 justify-center p-2 rounded tear-off-olive-500 items-end">
         <label className="flex-1 flex flex-col gap-1">
           <span className="font-medium text-sm">Market location:</span>
           <Autocomplete
-            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="text"
             name="location"
             required
@@ -91,7 +91,7 @@ export function Form({
         <label className="flex-1 flex flex-col gap-1">
           <span className="font-medium text-sm">Item name:</span>
           <Autocomplete
-            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="text"
             name="item"
             required
@@ -106,7 +106,7 @@ export function Form({
             Sell price (highest buy order):
           </span>
           <input
-            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="number"
             name="bid"
             required
@@ -119,7 +119,7 @@ export function Form({
             Buy price (lowest sell order):
           </span>
           <input
-            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="number"
             name="ask"
             required
@@ -130,7 +130,7 @@ export function Form({
         <button
           key={submittedAt}
           type="submit"
-          className="px-6 py-1 font-bold font-sm tear-off-yellow-500 hover:tear-off-yellow-400 hover:text-white active:opacity-50 animate-blink"
+          className="px-6 py-1 font-bold font-sm rounded tear-off-yellow-500 hover:tear-off-yellow-400 hover:text-white active:opacity-50 animate-blink"
         >
           Save entry
         </button>

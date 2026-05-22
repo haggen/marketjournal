@@ -177,7 +177,7 @@ export function App() {
         lists={{ items: data.items, locations: data.locations }}
       />
 
-      <hr className="h-1 tear-off-mist-700" />
+      <hr className="h-1 rounded tear-off-mist-700" />
 
       <div className="-m-2">
         <table className="table-fixed border-separate w-full border-spacing-2 cursor-default">
@@ -188,7 +188,7 @@ export function App() {
           </colgroup>
           <thead>
             <tr>
-              <th className="px-2 font-normal tear-off-gray-500">
+              <th className="px-2 font-normal rounded tear-off-gray-500">
                 <div className="flex items-center gap-2">
                   <input
                     type="search"
@@ -205,11 +205,14 @@ export function App() {
                 </div>
               </th>
 
-              <th className="px-2 tear-off-stone-500">
+              <th className="px-2 rounded tear-off-stone-500">
                 <DollarSignIcon strokeWidth={3} size={12} className="mx-auto" />
               </th>
               {data.locations.map((location) => (
-                <th className="px-2 tear-off-stone-500 group" key={location}>
+                <th
+                  className="px-2 rounded tear-off-stone-500 group"
+                  key={location}
+                >
                   <Header
                     justify="center"
                     trailing={
@@ -235,7 +238,7 @@ export function App() {
           <tbody>
             {items.map((item) => (
               <tr key={item} className="group hover:text-white">
-                <th className="px-2 text-left group tear-off-stone-500 group-hover:tear-off-mauve-500">
+                <th className="px-2 text-left group rounded tear-off-stone-500 group-hover:tear-off-mauve-500">
                   <Header
                     justify="start"
                     trailing={
@@ -252,12 +255,12 @@ export function App() {
                     {item}
                   </Header>
                 </th>
-                <td className="text-center tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700">
+                <td className="text-center rounded tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700">
                   {getMarketSpread(data, item)}
                 </td>
                 {data.locations.map((location) => (
                   <Price
-                    className="text-center tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700"
+                    className="text-center rounded tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700"
                     key={`${item}-${location}`}
                     data={data}
                     item={item}
