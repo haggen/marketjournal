@@ -1,29 +1,65 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useRef,
-  type ComponentProps,
-  type KeyboardEvent,
   useReducer,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
 } from "react";
 import { useFloating } from "@floating-ui/react";
 import { twMerge } from "tailwind-merge";
 
-export function Autocomplete({
+type State = {
+  query: string;
+  open: boolean;
+  highlighted: number;
+  scrollViewBlock: "nearest" | "center";
+};
+
+type Context = {
+  state: State;
+  options: string[];
+  containerRef: RefObject<HTMLDivElement | null>;
+  inputRef: RefObject<HTMLInputElement | null>;
+  floatingRef: RefObject<HTMLDivElement | null>;
+  listRef: RefObject<HTMLDivElement | null>;
+  floatingStyles: CSSProperties;
+  handleOpen: () => void;
+  handleClose: () => void;
+  handleInput: (query: string) => void;
+  handleComplete: (value: string) => void;
+  handleHighlight: (index: number) => void;
+  handleKeyDown: (event: { key: string; preventDefault: () => void }) => void;
+};
+
+const Context = createContext<Context | null>(null);
+
+function useAutocomplete() {
+  const context = useContext(Context);
+  if (!context) {
+    throw new Error(
+      "Autocomplete components must be used within Autocomplete.Root",
+    );
+  }
+  return context;
+}
+
+function Root({
   data,
   filter = (query, option) =>
     option.toLowerCase().includes(query.toLowerCase()),
-  ...props
+  children,
 }: {
   data: string[];
   filter?: (query: string, option: string) => boolean;
-} & ComponentProps<"input">) {
+  children: ReactNode;
+}) {
   const [state, update] = useReducer(
-    (state, patch) => ({ ...state, ...patch }),
-    {
-      query: "",
-      open: false,
-      highlighted: -1,
-    },
+    (state: State, patch: Partial<State>) => ({ ...state, ...patch }),
+    { query: "", open: false, highlighted: -1, scrollViewBlock: "nearest" },
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,19 +91,23 @@ export function Autocomplete({
   }, []);
 
   useEffect(() => {
-    if (!listRef.current) {
-      return;
-    }
-
-    if (!state.open) {
+    if (!listRef.current || !state.open) {
       return;
     }
 
     const option = listRef.current.children[state.highlighted];
     if (option) {
-      option.scrollIntoView({ block: "nearest" });
+      option.scrollIntoView({ block: state.scrollViewBlock });
     }
   }, [state.highlighted, state.open]);
+
+  const options = data
+    .filter((option) => filter(state.query, option))
+    .sort((a, b) => a.localeCompare(b));
+
+  const getValue = () => {
+    return inputRef.current?.value ?? "";
+  };
 
   const setValue = (value: string) => {
     if (inputRef.current) {
@@ -76,7 +116,11 @@ export function Autocomplete({
   };
 
   const handleOpen = () => {
-    update({ open: true });
+    update({
+      open: true,
+      scrollViewBlock: "center",
+      highlighted: options.findIndex((option) => option === getValue()),
+    });
   };
 
   const handleClose = () => {
@@ -102,11 +146,15 @@ export function Autocomplete({
   const handleHighlight = (index: number) => {
     update({
       open: true,
+      scrollViewBlock: "nearest",
       highlighted: Math.max(0, Math.min(index, options.length - 1)),
     });
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: {
+    key: string;
+    preventDefault: () => void;
+  }) => {
     if (event.key === "ArrowDown") {
       if (state.open) {
         event.preventDefault();
@@ -137,35 +185,74 @@ export function Autocomplete({
     }
   };
 
-  const options = data
-    .filter((option) => filter(state.query, option))
-    .sort((a, b) => a.localeCompare(b));
+  return (
+    <Context.Provider
+      value={{
+        state,
+        options,
+        containerRef,
+        inputRef,
+        floatingRef,
+        listRef,
+        floatingStyles,
+        handleOpen,
+        handleClose,
+        handleInput,
+        handleComplete,
+        handleHighlight,
+        handleKeyDown,
+      }}
+    >
+      <div ref={containerRef} className="contents">
+        {children}
+      </div>
+    </Context.Provider>
+  );
+}
+
+function Input(props: ComponentProps<"input">) {
+  const { inputRef, handleOpen, handleInput, handleKeyDown } =
+    useAutocomplete();
 
   return (
-    <div ref={containerRef} className="contents">
-      <input
-        ref={inputRef}
-        onFocus={handleOpen}
-        onInput={(e) => handleInput(e.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-        {...props}
-      />
+    <input
+      ref={inputRef}
+      onFocus={handleOpen}
+      onInput={(e) => handleInput(e.currentTarget.value)}
+      onKeyDown={handleKeyDown}
+      {...props}
+    />
+  );
+}
 
+function List() {
+  const {
+    floatingRef,
+    floatingStyles,
+    listRef,
+    options,
+    state,
+    handleHighlight,
+    handleComplete,
+  } = useAutocomplete();
+
+  return (
+    <div
+      ref={floatingRef}
+      className={twMerge(
+        "m-1 rounded tear-off-mauve-600 shadow-lg",
+        state.open ? "" : "hidden",
+      )}
+      style={floatingStyles}
+    >
       <div
-        ref={floatingRef}
-        className={twMerge(
-          "m-1 rounded tear-off-mauve-600 shadow-lg",
-          state.open ? "" : "hidden",
-        )}
-        style={floatingStyles}
+        ref={listRef}
+        tabIndex={-1}
+        role="listbox"
+        className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-mauve-900"
       >
-        <div
-          ref={listRef}
-          tabIndex={-1}
-          role="listbox"
-          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-mauve-900"
-        >
-          {options.map((option, index) => (
+        {options.length > 0 ? (
+          options.map((option, index) => (
             <div
               key={option}
               role="option"
@@ -176,9 +263,13 @@ export function Autocomplete({
             >
               {option}
             </div>
-          ))}
-        </div>
+          ))
+        ) : (
+          <div className="px-2 text-mauve-400">Nothing.</div>
+        )}
       </div>
     </div>
   );
 }
+
+export const Autocomplete = { Root, Input, List };

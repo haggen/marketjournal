@@ -74,30 +74,36 @@ export function Form({
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="scroll-m-2">
       <fieldset className="flex gap-2 justify-center p-2 rounded tear-off-olive-500 items-end">
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Market location:</span>
-          <Autocomplete
-            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
-            type="text"
-            name="location"
-            required
-            data={lists.locations}
-            autoComplete="off"
-          />
-        </label>
+        <Autocomplete.Root data={lists.locations}>
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Market location:</span>
+            <Autocomplete.Input
+              className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+              type="text"
+              name="location"
+              required
+              autoComplete="off"
+            />
+          </label>
+          <Autocomplete.List />
+        </Autocomplete.Root>
 
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Item name:</span>
-          <Autocomplete
-            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
-            type="text"
-            name="item"
-            required
-            filter={(query, item) => matchItem(query, item)}
-            data={lists.items}
-            autoComplete="off"
-          />
-        </label>
+        <Autocomplete.Root
+          data={lists.items}
+          filter={(query, item) => matchItem(query, item)}
+        >
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="font-medium text-sm">Item name:</span>
+            <Autocomplete.Input
+              className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+              type="text"
+              name="item"
+              required
+              autoComplete="off"
+            />
+          </label>
+          <Autocomplete.List />
+        </Autocomplete.Root>
 
         <label className="flex-1 flex flex-col gap-1">
           <span className="font-medium text-sm">
