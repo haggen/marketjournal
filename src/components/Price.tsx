@@ -26,7 +26,7 @@ export function Price({
     <div className="grid grid-cols-2 gap-2 items-center">
       <div className="flex gap-2 items-center justify-self-end">
         <div
-          className="text-xs text-red-500"
+          className="text-xs text-red-400"
           title="Premium compared to the lowest sell price across markets."
         >
           {gap.bid > 0
@@ -44,7 +44,7 @@ export function Price({
         <div title="Buy price">{fmt.number(local.latest.ask)}</div>
 
         <div
-          className="text-xs text-lime-500"
+          className="text-xs text-lime-400"
           title="Discount compared to the highest buy price across markets."
         >
           {gap.ask > 0

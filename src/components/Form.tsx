@@ -84,6 +84,7 @@ export function Form({
             name="location"
             required
             data={lists.locations}
+            autoComplete="off"
           />
         </label>
 
@@ -96,6 +97,7 @@ export function Form({
             required
             filter={(query, item) => matchItem(query, item)}
             data={lists.items}
+            autoComplete="off"
           />
         </label>
 
