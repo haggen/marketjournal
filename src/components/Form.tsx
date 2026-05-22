@@ -38,8 +38,9 @@ export function Form({
           setFormValue(formRef.current, "bid", entry.price.bid.toString());
           setFormValue(formRef.current, "ask", entry.price.ask.toString());
 
-          formRef.current.scrollIntoView();
           getFormElement(formRef.current, "bid").select();
+
+          formRef.current.scrollIntoView();
         }
       },
     }),
@@ -73,12 +74,12 @@ export function Form({
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
-      <fieldset className="flex gap-2 justify-center px-3 py-2 bg-olive-600 border border-dashed border-mist-800 items-end">
+    <form ref={formRef} onSubmit={handleSubmit} className="scroll-m-2">
+      <fieldset className="flex gap-2 justify-center p-2 tear-off-olive-500 items-end">
         <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Location:</span>
+          <span className="font-medium text-sm">Market location:</span>
           <Autocomplete
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="text"
             name="location"
             required
@@ -87,9 +88,9 @@ export function Form({
         </label>
 
         <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">Item:</span>
+          <span className="font-medium text-sm">Item name:</span>
           <Autocomplete
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="text"
             name="item"
             required
@@ -103,29 +104,31 @@ export function Form({
             Sell price (highest buy order):
           </span>
           <input
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="number"
             name="bid"
             required
             min="1"
           />
         </label>
+
         <label className="flex-1 flex flex-col gap-1">
           <span className="font-medium text-sm">
             Buy price (lowest sell order):
           </span>
           <input
-            className={twMerge(styles.input, "flex-1 border-olive-600")}
+            className="flex-1 p-1 text-white tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
             type="number"
             name="ask"
             required
             min="1"
           />
         </label>
+
         <button
           key={submittedAt}
           type="submit"
-          className={twMerge(styles.button, "border-olive-600")}
+          className="px-6 py-1 font-bold font-sm tear-off-yellow-500 hover:tear-off-yellow-400 hover:text-white active:opacity-50 animate-blink"
         >
           Save entry
         </button>

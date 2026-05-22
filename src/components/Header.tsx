@@ -30,7 +30,7 @@ export function Header({
 
       <div
         className={twMerge(
-          "flex gap-1 justify-self-start not-group-hover:invisible text-neutral-300 *:hover:text-white *:active:opacity-50",
+          "flex gap-2 justify-self-start not-group-hover:invisible text-stone-400 *:hover:text-white *:active:opacity-50",
           justify === "start" ? "" : "col-start-3",
         )}
       >

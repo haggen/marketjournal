@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { CircleXIcon, SortDescIcon, XIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { DeleteIcon, DollarSignIcon, XIcon } from "lucide-react";
 import {
   addEntry,
   createEmptyData,
@@ -17,7 +16,6 @@ import {
 import { immutable } from "@/lib/immutable";
 import { Form, type FormHandle } from "@/components/Form";
 import { Header } from "@/components/Header";
-import { styles } from "@/lib/styles";
 import { Price } from "./Price";
 
 type Action =
@@ -74,11 +72,22 @@ export function App() {
       .filter((item) => matchItem(query, item))
       .sort((a, b) => {
         if (sortKey.length === 2) {
-          return (
-            (getLocalMarket(data, b, sortKey[1]).latest[sortKey[0]] -
-              getLocalMarket(data, a, sortKey[1]).latest[sortKey[0]]) *
-            (sortKey[0] === "ask" ? -1 : 1)
-          );
+          const latestA = getLocalMarket(data, a, sortKey[1]).latest[
+            sortKey[0]
+          ];
+          const latestB = getLocalMarket(data, b, sortKey[1]).latest[
+            sortKey[0]
+          ];
+
+          if (latestA === 0 && latestB !== 0) {
+            return 1;
+          }
+
+          if (latestB === 0 && latestA !== 0) {
+            return -1;
+          }
+
+          return (latestB - latestA) * (sortKey[0] === "ask" ? -1 : 1);
         }
 
         return getMarketSpread(data, b) - getMarketSpread(data, a);
@@ -140,13 +149,13 @@ export function App() {
   };
 
   return (
-    <main className="mx-auto flex flex-col gap-6 px-6 py-12">
+    <main className="mx-auto flex flex-col gap-4 px-4 py-8">
       <header className="grid grid-cols-3">
-        <h1 className="text-center text-3xl font-medium col-start-2">
+        <h1 className="col-start-2 text-center text-3xl font-medium">
           Market Journal
         </h1>
 
-        <div className="flex gap-4 items-center justify-end">
+        <div className="flex gap-6 items-center justify-end">
           <button
             className="hover:text-white active:opacity-50"
             onClick={() => handleImport()}
@@ -168,79 +177,43 @@ export function App() {
         lists={{ items: data.items, locations: data.locations }}
       />
 
-      <hr className="h-1 border border-mist-800 bg-mist-600 border-dashed" />
+      <hr className="h-1 tear-off-mist-700" />
 
       <div className="-m-2">
-        <table className="table-fixed border-separate w-full border-spacing-2">
-          <col />
-          <col className="w-28" />
-          <col />
+        <table className="table-fixed border-separate w-full border-spacing-2 cursor-default">
+          <colgroup>
+            <col />
+            <col className="w-24" />
+            <col />
+          </colgroup>
           <thead>
             <tr>
-              <th
-                className={twMerge(
-                  styles.th,
-                  "font-normal border-mist-800 bg-mist-700",
-                )}
-                rowSpan={2}
-              >
-                <div className="flex items-center gap-1">
+              <th className="px-2 font-normal tear-off-gray-500">
+                <div className="flex items-center gap-2">
                   <input
                     type="search"
-                    placeholder="Everything..."
+                    placeholder="Search..."
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    className="min-w-0 text-sm placeholder:text-mist-400 focus-within:outline-none"
+                    className="min-w-0 text-sm placeholder:text-gray-400 focus-within:outline-none"
                   />
                   {query !== "" ? (
                     <button onClick={() => setQuery("")}>
-                      <CircleXIcon size={16} />
+                      <DeleteIcon strokeWidth={3} size={12} />
                     </button>
                   ) : null}
                 </div>
               </th>
-              <th
-                className={twMerge(styles.th, "border-mist-800 bg-mist-700")}
-                colSpan={Math.max(1, data.locations.length) + 1}
-              >
-                Markets
-              </th>
-            </tr>
-            <tr>
-              <th
-                className={twMerge(
-                  styles.th,
-                  "border-mist-800 bg-stone-600 group",
-                )}
-              >
-                <Header
-                  justify="center"
-                  trailing={
-                    <button
-                      key={1}
-                      type="button"
-                      onClick={() => handleSort("spread")}
-                    >
-                      <SortDescIcon strokeWidth={2} size={12} />
-                    </button>
-                  }
-                >
-                  Spread
-                </Header>
+
+              <th className="px-2 tear-off-stone-500">
+                <DollarSignIcon strokeWidth={3} size={12} className="mx-auto" />
               </th>
               {data.locations.map((location) => (
-                <th
-                  className={twMerge(
-                    styles.th,
-                    "border-mist-800 bg-stone-600 group",
-                  )}
-                  key={location}
-                >
+                <th className="px-2 tear-off-stone-500 group" key={location}>
                   <Header
                     justify="center"
-                    trailing={[
+                    trailing={
                       <button
-                        key={0}
                         type="button"
                         onClick={() =>
                           dispatch({
@@ -250,22 +223,8 @@ export function App() {
                         }
                       >
                         <XIcon strokeWidth={4} size={12} />
-                      </button>,
-                      <button
-                        key={1}
-                        type="button"
-                        className={
-                          sortKey[1] === location
-                            ? sortKey[0] === "bid"
-                              ? "text-red-500"
-                              : "text-lime-500"
-                            : ""
-                        }
-                        onClick={() => handleSort(location)}
-                      >
-                        <SortDescIcon strokeWidth={2} size={12} />
-                      </button>,
-                    ]}
+                      </button>
+                    }
                   >
                     {location}
                   </Header>
@@ -275,13 +234,8 @@ export function App() {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item} className="group/row hover:text-white">
-                <th
-                  className={twMerge(
-                    styles.th,
-                    "text-left group border-mist-800 bg-stone-600 group-hover/row:bg-gray-600",
-                  )}
-                >
+              <tr key={item} className="group hover:text-white">
+                <th className="px-2 text-left group tear-off-stone-500 group-hover:tear-off-mauve-500">
                   <Header
                     justify="start"
                     trailing={
@@ -298,16 +252,12 @@ export function App() {
                     {item}
                   </Header>
                 </th>
-                <td
-                  className={twMerge(
-                    styles.td,
-                    "text-center border-mist-800 bg-mist-900 group-hover/row:bg-gray-600/30 hover:bg-gray-600/60",
-                  )}
-                >
+                <td className="text-center tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700">
                   {getMarketSpread(data, item)}
                 </td>
                 {data.locations.map((location) => (
                   <Price
+                    className="text-center tear-off-mist-900 group-hover:tear-off-mauve-700 hover:tear-off-mauve-700"
                     key={`${item}-${location}`}
                     data={data}
                     item={item}

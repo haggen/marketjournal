@@ -5,15 +5,15 @@ import {
   type Price,
 } from "@/lib/data";
 import { fmt } from "@/lib/fmt";
-import { styles } from "@/lib/styles";
-import { twMerge } from "tailwind-merge";
 
 export function Price({
+  className,
   data,
   item,
   location,
   onPrefill,
 }: {
+  className?: string;
   data: Data;
   item: string;
   location: string;
@@ -59,10 +59,7 @@ export function Price({
 
   return (
     <td
-      className={twMerge(
-        styles.td,
-        "text-center border-mist-800 bg-mist-900 group-hover/row:bg-gray-600/30 hover:bg-gray-600/60",
-      )}
+      className={className}
       key={`${location}-${item}`}
       onClick={() => onPrefill(location, item, local?.latest)}
     >

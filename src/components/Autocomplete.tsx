@@ -10,14 +10,6 @@ import {
 import { useFloating } from "@floating-ui/react";
 import { twMerge } from "tailwind-merge";
 
-const styles = {
-  floating:
-    "m-1 bg-mauve-600 bg-clip-padding border border-dashed border-mauve-600 shadow-lg",
-  listbox: "p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62",
-  option:
-    "px-2 cursor-default text-rose-100 border border-dashed border-mauve-600 data-highlighted:bg-mauve-700 data-highlighted:text-white",
-};
-
 export function Autocomplete({
   data,
   filter = (query, option) =>
@@ -116,14 +108,17 @@ export function Autocomplete({
 
       <div
         ref={refs.setFloating}
-        className={twMerge(styles.floating, open ? "" : "hidden")}
+        className={twMerge(
+          "m-1 tear-off-mauve-600 shadow-lg",
+          open ? "" : "hidden",
+        )}
         style={floatingStyles}
       >
         <div
           ref={listRef}
           tabIndex={-1}
           role="listbox"
-          className={styles.listbox}
+          className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62"
           onMouseLeave={() => {
             lastMousePositionRef.current = null;
           }}
@@ -132,7 +127,7 @@ export function Autocomplete({
             <div
               key={option}
               role="option"
-              className={styles.option}
+              className="px-2 cursor-default text-rose-100 border border-dashed border-mauve-600 data-highlighted:bg-mauve-700 data-highlighted:text-white"
               onMouseMove={() => setSelected(index)}
               onMouseDown={() => handleConfirm(option)}
               data-highlighted={selected === index || undefined}
