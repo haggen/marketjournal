@@ -22,6 +22,11 @@ To build for deployment:
 bun run build
 ```
 
+### Notes
+
+- Ask and bid fields are from the market perspective, i.e. what the market is asking or bidding for.
+- Formula components are ordered for the benefit of the user, so positive numbers mean positive outcomes.
+
 ## Legal
 
 © 2026 Arthur Corenzan.

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { twMerge } from "tailwind-merge";
+import { c } from "@/lib/classes";
 
 export function Header({
   justify,
@@ -12,15 +12,13 @@ export function Header({
 }) {
   return (
     <div
-      className={twMerge(
+      className={c(
         "grid gap-2 items-center",
-        justify === "start"
-          ? "grid-cols-[auto_1fr]"
-          : "grid-cols-[1fr_auto_1fr]",
+        justify === "start" ? "grid-cols-[auto_1fr]" : "grid-cols-[1fr_auto_1fr]",
       )}
     >
       <div
-        className={twMerge(
+        className={c(
           "text-xs leading-loose",
           justify === "start" ? "" : "col-start-2 justify-self-end",
         )}
@@ -29,7 +27,7 @@ export function Header({
       </div>
 
       <div
-        className={twMerge(
+        className={c(
           "flex gap-2 justify-self-start not-group-hover:invisible text-stone-400 *:hover:text-white *:active:opacity-50",
           justify === "start" ? "" : "col-start-3",
         )}

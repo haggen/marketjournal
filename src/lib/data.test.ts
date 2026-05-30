@@ -2,10 +2,11 @@ import { describe, expect, it } from "bun:test";
 import {
   addEntry,
   createEmptyData,
+  deleteEntry,
   deleteItem,
   deleteLocation,
   getGlobalMarket,
-  getInitialData,
+  loadStoredData,
   getLocalMarket,
   getMarketGap,
   getNetProfit,
@@ -150,7 +151,7 @@ describe("migrate", () => {
 describe("getInitialData", () => {
   it("returns empty data when storage is empty", () => {
     fakeStorage(null);
-    expect(getInitialData()).toEqual(createEmptyData());
+    expect(loadStoredData()).toEqual(createEmptyData());
   });
 
   it("returns stored data as-is when already current", () => {
@@ -159,15 +160,13 @@ describe("getInitialData", () => {
 
     fakeStorage(JSON.stringify(current));
 
-    expect(getInitialData()).toEqual(current);
+    expect(loadStoredData()).toEqual(current);
   });
 
   it("migrates outdated data from storage on load", () => {
     const stored = {
       version: 3,
-      entries: [
-        { timestamp: 1, item: "Raw Fish", location: "Martlock", price: 300 },
-      ],
+      entries: [{ timestamp: 1, item: "Raw Fish", location: "Martlock", price: 300 }],
       items: [],
       locations: [],
       index: {},
@@ -175,7 +174,7 @@ describe("getInitialData", () => {
 
     fakeStorage(JSON.stringify(stored));
 
-    const data = getInitialData();
+    const data = loadStoredData();
 
     expect(data.version).toBe(5);
     expect(data.items).toEqual(["Raw Fish"]);
@@ -197,6 +196,7 @@ describe("addEntry", () => {
     expect(data.items).toEqual(["Thin Hide"]);
     expect(data.locations).toEqual(["Thetford"]);
     expect(data.market.local["Thin Hide-Thetford"]).toEqual({
+      timestamp: 1,
       latest: { bid: 100, ask: 120 },
     });
     expect(data.market.global["Thin Hide"]).toEqual({
@@ -236,6 +236,7 @@ describe("addEntry", () => {
     addEntry(data, createEntry(3, "Thin Hide", "Thetford", 140, 160));
 
     expect(data.market.local["Thin Hide-Thetford"]).toEqual({
+      timestamp: 3,
       latest: { bid: 140, ask: 160 },
     });
     expect(data.market.global["Thin Hide"]?.count).toBe(2);
@@ -339,6 +340,7 @@ describe("getLocalMarket", () => {
     addEntry(data, createEntry(1, "Thin Hide", "Thetford", 100, 110));
 
     expect(getLocalMarket(data, "Thin Hide", "Thetford")).toEqual({
+      timestamp: 1,
       latest: { bid: 100, ask: 110 },
     });
   });

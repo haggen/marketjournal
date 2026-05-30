@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { useFloating } from "@floating-ui/react";
-import { twMerge } from "tailwind-merge";
+import { Input } from "@/components/Input";
 
 type State = {
   query: string;
@@ -40,17 +40,18 @@ const Context = createContext<Context | null>(null);
 function useAutocomplete() {
   const context = useContext(Context);
   if (!context) {
-    throw new Error(
-      "Autocomplete components must be used within Autocomplete.Root",
-    );
+    throw new Error("Autocomplete components must be used within Autocomplete.Root");
   }
   return context;
 }
 
-function Root({
+function defaultFilter(query: string, option: string) {
+  return option.toLowerCase().startsWith(query.toLowerCase());
+}
+
+function AutocompleteRoot({
   data,
-  filter = (query, option) =>
-    option.toLowerCase().includes(query.toLowerCase()),
+  filter = defaultFilter,
   children,
 }: {
   data: string[];
@@ -131,10 +132,7 @@ function Root({
     update({
       query,
       open: true,
-      highlighted: Math.max(
-        -1,
-        Math.min(state.highlighted, options.length - 1),
-      ),
+      highlighted: Math.max(-1, Math.min(state.highlighted, options.length - 1)),
     });
   };
 
@@ -151,17 +149,12 @@ function Root({
     });
   };
 
-  const handleKeyDown = (event: {
-    key: string;
-    preventDefault: () => void;
-  }) => {
+  const handleKeyDown = (event: { key: string; preventDefault: () => void }) => {
     if (event.key === "ArrowDown") {
       if (state.open) {
         event.preventDefault();
         handleHighlight(state.highlighted + 1);
-      } else if (
-        inputRef.current?.selectionStart === inputRef.current?.value.length
-      ) {
+      } else if (inputRef.current?.selectionStart === inputRef.current?.value.length) {
         handleOpen();
       }
     } else if (event.key === "ArrowUp") {
@@ -210,12 +203,11 @@ function Root({
   );
 }
 
-function Input(props: ComponentProps<"input">) {
-  const { inputRef, handleOpen, handleInput, handleKeyDown } =
-    useAutocomplete();
+function AutocompleteInput(props: ComponentProps<"input">) {
+  const { inputRef, handleOpen, handleInput, handleKeyDown } = useAutocomplete();
 
   return (
-    <input
+    <Input
       ref={inputRef}
       onFocus={handleOpen}
       onInput={(e) => handleInput(e.currentTarget.value)}
@@ -225,38 +217,29 @@ function Input(props: ComponentProps<"input">) {
   );
 }
 
-function List() {
-  const {
-    floatingRef,
-    floatingStyles,
-    listRef,
-    options,
-    state,
-    handleHighlight,
-    handleComplete,
-  } = useAutocomplete();
+function AutocompleteList() {
+  const { floatingRef, floatingStyles, listRef, options, state, handleHighlight, handleComplete } =
+    useAutocomplete();
 
   return (
     <div
       ref={floatingRef}
-      className={twMerge(
-        "m-1 rounded tear-off-mauve-600 shadow-lg",
-        state.open ? "" : "hidden",
-      )}
+      className="mt-1 bg-orange-800 rounded-xs hard-shadow z-10"
       style={floatingStyles}
+      hidden={!state.open}
     >
       <div
         ref={listRef}
         tabIndex={-1}
         role="listbox"
-        className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-mauve-900"
+        className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin"
       >
         {options.length > 0 ? (
           options.map((option, index) => (
             <div
               key={option}
               role="option"
-              className="px-2 cursor-default text-rose-100 rounded-sm tear-off-mauve-600 data-highlighted:tear-off-mauve-700 data-highlighted:text-white"
+              className="px-1 cursor-default rounded-xs data-highlighted:bg-black/10 data-highlighted:text-white"
               onMouseMove={() => handleHighlight(index)}
               onMouseDown={() => handleComplete(option)}
               data-highlighted={state.highlighted === index || undefined}
@@ -265,11 +248,15 @@ function List() {
             </div>
           ))
         ) : (
-          <div className="px-2 text-mauve-400">Nothing.</div>
+          <div className="px-1 text-white/50">No results.</div>
         )}
       </div>
     </div>
   );
 }
 
-export const Autocomplete = { Root, Input, List };
+export const Autocomplete = {
+  Root: AutocompleteRoot,
+  Input: AutocompleteInput,
+  List: AutocompleteList,
+};

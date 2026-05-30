@@ -2,13 +2,17 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type FocusEvent,
   type Ref,
   type SubmitEvent,
 } from "react";
 import z from "zod";
 import { type Entry, matchItem } from "@/lib/data";
 import { getFormElement, setFormValue } from "@/lib/form";
-import { Autocomplete } from "./Autocomplete";
+import { Autocomplete } from "@/components/Autocomplete";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
+import { Input } from "@/components/Input";
 
 export type FormHandle = {
   prefill(entry: Omit<Entry, "timestamp">): void;
@@ -33,8 +37,8 @@ export function Form({
         if (formRef.current) {
           setFormValue(formRef.current, "location", entry.location);
           setFormValue(formRef.current, "item", entry.item);
-          setFormValue(formRef.current, "bid", entry.price.bid.toString());
-          setFormValue(formRef.current, "ask", entry.price.ask.toString());
+          setFormValue(formRef.current, "bid", entry.bid.toString());
+          setFormValue(formRef.current, "ask", entry.ask.toString());
 
           getFormElement(formRef.current, "bid").select();
 
@@ -50,17 +54,15 @@ export function Form({
 
     const data = new FormData(event.currentTarget);
 
-    const payload = {
+    const entry = {
       timestamp: Date.now(),
       location: z.string().min(1).parse(data.get("location")),
       item: z.string().min(1).parse(data.get("item")),
-      price: {
-        bid: z.coerce.number().min(1).parse(data.get("bid")),
-        ask: z.coerce.number().min(1).parse(data.get("ask")),
-      },
+      bid: z.coerce.number().min(1).parse(data.get("bid")),
+      ask: z.coerce.number().min(1).parse(data.get("ask")),
     };
 
-    onSubmit(payload);
+    onSubmit(entry);
 
     setFormValue(event.currentTarget, "item", "");
     setFormValue(event.currentTarget, "bid", "");
@@ -71,74 +73,76 @@ export function Form({
     setSubmittedAt(Date.now());
   };
 
+  const handleAskFocus = (event: FocusEvent<HTMLInputElement>) => {
+    if (event.currentTarget.value === "" && formRef.current) {
+      event.currentTarget.value = getFormElement(formRef.current, "bid").value;
+      event.currentTarget.select();
+    }
+  };
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="scroll-m-2">
-      <fieldset className="flex gap-2 justify-center p-2 rounded tear-off-olive-500 items-end">
-        <Autocomplete.Root data={lists.locations}>
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Market location:</span>
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="flex p-2 gap-2 scroll-p-4 bg-stone-500 rounded-xs hard-shadow"
+    >
+      <Autocomplete.Root data={lists.locations}>
+        <Field label="Market location" className="flex-1">
+          {({ id }) => (
             <Autocomplete.Input
-              className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+              id={id}
               type="text"
               name="location"
               required
               autoComplete="off"
+              placeholder="Thetford"
             />
-          </label>
-          <Autocomplete.List />
-        </Autocomplete.Root>
+          )}
+        </Field>
 
-        <Autocomplete.Root
-          data={lists.items}
-          filter={(query, item) => matchItem(query, item)}
-        >
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="font-medium text-sm">Item name:</span>
+        <Autocomplete.List />
+      </Autocomplete.Root>
+
+      <Autocomplete.Root data={lists.items} filter={matchItem}>
+        <Field label="Item name" className="flex-1">
+          {({ id }) => (
             <Autocomplete.Input
-              className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+              id={id}
               type="text"
               name="item"
               required
               autoComplete="off"
+              placeholder="Travertine"
             />
-          </label>
-          <Autocomplete.List />
-        </Autocomplete.Root>
+          )}
+        </Field>
 
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">
-            Sell price (highest buy order):
-          </span>
-          <input
-            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
-            type="number"
-            name="bid"
-            required
-            min="1"
-          />
-        </label>
+        <Autocomplete.List />
+      </Autocomplete.Root>
 
-        <label className="flex-1 flex flex-col gap-1">
-          <span className="font-medium text-sm">
-            Buy price (lowest sell order):
-          </span>
-          <input
-            className="flex-1 p-1 text-white rounded tear-off-black/30 focus-within:tear-off-black/60 focus-within:outline-none"
+      <Field label="Sell price (highest buy order)" className="flex-1">
+        {({ id }) => <Input id={id} type="number" name="bid" min="1" required placeholder="99" />}
+      </Field>
+
+      <Field label="Buy price (lowest sell order)" className="flex-1">
+        {({ id }) => (
+          <Input
+            id={id}
             type="number"
             name="ask"
-            required
             min="1"
+            required
+            onFocus={handleAskFocus}
+            placeholder="101"
           />
-        </label>
+        )}
+      </Field>
 
-        <button
-          key={submittedAt}
-          type="submit"
-          className="px-6 py-1 font-bold font-sm rounded tear-off-yellow-500 hover:tear-off-yellow-400 hover:text-white active:opacity-50 animate-blink"
-        >
+      <footer className="flex items-end">
+        <Button key={submittedAt} type="submit" variant="primary">
           Save entry
-        </button>
-      </fieldset>
+        </Button>
+      </footer>
     </form>
   );
 }
