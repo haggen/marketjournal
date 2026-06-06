@@ -246,7 +246,7 @@ export function getMarketSpread(data: Data, item: string) {
     return 0;
   }
 
-  return global.max.ask - global.min.bid;
+  return global.max.bid - global.min.ask;
 }
 
 export function getNetProfit(data: Data, item: string, fee: number) {

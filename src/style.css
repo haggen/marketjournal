@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: Handjet, sans-serif;
+  --font-sans: Asul, sans-serif;
 
   --animate-blink: blink 0.1s steps(1) forwards;
 
@@ -19,7 +19,6 @@
   :root {
     @apply bg-stone-600 text-stone-300;
 
-    font-size: 18px;
     scrollbar-gutter: stable;
   }
 
