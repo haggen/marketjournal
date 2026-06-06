@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type InputEvent, type Ref } from "react";
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type InputEvent,
+  type Ref,
+} from "react";
 import {
   addEntry,
   createEmptyData,
@@ -90,7 +98,9 @@ function HistoryModal({
               ))}
             </div>
           ) : (
-            <div className="text-center text-white/50 py-8">No entries found.</div>
+            <div className="text-center text-white/50 py-8">
+              No entries found.
+            </div>
           )}
         </div>
 
@@ -166,7 +176,11 @@ export function App() {
     dispatch({ type: "add", payload });
   };
 
-  const handlePrefill = (location: string, item: string, price?: { bid: number; ask: number }) => {
+  const handlePrefill = (
+    location: string,
+    item: string,
+    price?: { bid: number; ask: number },
+  ) => {
     if (formRef.current) {
       formRef.current.prefill({
         location,
@@ -246,7 +260,7 @@ export function App() {
   }, [data.entries, selectedLocation]);
 
   return (
-    <main className="flex flex-col gap-4 p-4 min-w-6xl h-dvh">
+    <main className="flex flex-col gap-4 p-4 min-w-5xl h-dvh">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Market Journal</h1>
 
@@ -267,7 +281,10 @@ export function App() {
           role="row"
           className="grid grid-flow-col auto-cols-fr sticky top-0 bg-stone-500 rounded-xs hard-shadow"
         >
-          <div role="cell" className="flex justify-between p-1 rounded-xs gap-1">
+          <div
+            role="cell"
+            className="flex justify-between p-1 rounded-xs gap-1"
+          >
             <div className="flex-1 flex gap-1">
               <input
                 type="search"
@@ -276,7 +293,9 @@ export function App() {
                 onChange={(event) => setQuery(event.target.value)}
                 className="field-sizing-content placeholder-shown:flex-1 blank:flex-1 placeholder-white/50"
               />
-              {query === "" ? null : <button onClick={() => setQuery("")}>&times;</button>}
+              {query === "" ? null : (
+                <button onClick={() => setQuery("")}>&times;</button>
+              )}
             </div>
 
             <div className="flex min-w-0">
@@ -325,7 +344,9 @@ export function App() {
                 <span
                   className={c(
                     "text-xs",
-                    getNetProfit(data, item, fee) >= 0 ? "text-lime-400" : "text-red-400",
+                    getNetProfit(data, item, fee) >= 0
+                      ? "text-lime-400"
+                      : "text-red-400",
                   )}
                 >
                   {fmt.number(getNetProfit(data, item, fee), {
