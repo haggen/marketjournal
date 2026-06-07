@@ -28,6 +28,7 @@ export type LocalMarket = {
 
 export type Data = {
   version: number;
+  fee: number;
   entries: Entry[];
   items: string[];
   locations: string[];
@@ -39,7 +40,8 @@ export type Data = {
 
 export function createEmptyData(): Data {
   return {
-    version: 6,
+    version: 7,
+    fee: 0.085,
     entries: [],
     items: [],
     locations: [],
@@ -54,9 +56,11 @@ export function migrate(data: any): Data {
     "version" in data &&
     typeof data.version === "number"
   ) {
-    if (data.version === 6) {
-      return data;
-    } else if (data.version === 5) {
+    if (data.version < 5) {
+      return createEmptyData();
+    }
+
+    if (data.version === 5) {
       data.entries = data.entries.map((tuple: any) => ({
         timestamp: tuple[0],
         location: tuple[2],
@@ -80,9 +84,14 @@ export function migrate(data: any): Data {
       });
 
       data.version = 6;
-
-      return data;
     }
+
+    if (data.version === 6) {
+      data.fee = 0.085;
+      data.version = 7;
+    }
+
+    return data;
   }
 
   return createEmptyData();
@@ -156,6 +165,10 @@ function recompileMarkets(data: Data, item: string) {
   }
 }
 
+export function setFee(data: Data, fee: number) {
+  data.fee = fee;
+}
+
 export function addEntry(data: Data, entry: Entry) {
   data.entries.push(entry);
 
@@ -204,17 +217,17 @@ export function deleteLocation(data: Data, location: string) {
   }
 }
 
-export function getLocalMarket(data: Data, item: string, location: string) {
+export function getLocalMarket(data: Data, item: string, location: string): LocalMarket {
   return (
     data.market.local[getLocalMarketKey(item, location)] ?? {
-      timestmap: 0,
+      timestamp: 0,
       ask: 0,
       bid: 0,
     }
   );
 }
 
-export function getGlobalMarket(data: Data, item: string) {
+export function getGlobalMarket(data: Data, item: string): GlobalMarket {
   return (
     data.market.global[item] ?? {
       min: { ask: 0, bid: 0 },
@@ -249,14 +262,14 @@ export function getMarketSpread(data: Data, item: string) {
   return global.max.bid - global.min.ask;
 }
 
-export function getNetProfit(data: Data, item: string, fee: number) {
+export function getNetProfit(data: Data, item: string) {
   const spread = getMarketSpread(data, item);
 
   if (spread === 0) {
     return 0;
   }
 
-  return spread - getGlobalMarket(data, item).max.bid * fee;
+  return spread - getGlobalMarket(data, item).max.bid * data.fee;
 }
 
 export function matchItem(query: string, item: string) {

@@ -14,6 +14,7 @@ import {
   getGlobalMarket,
   getMarketGap,
   getLocalMarket,
+  setFee,
 } from "@/lib/data";
 import { immutable } from "@/lib/immutable";
 import { Form, type FormHandle } from "@/components/Form";
@@ -28,7 +29,6 @@ function HistoryModal({
   subject,
   entries,
   getRelatedValue,
-  onDeleteSubject,
   onDeleteEntry,
 }: {
   ref: Ref<HTMLDialogElement>;
@@ -106,6 +106,7 @@ type Action =
   | { type: "delete-item"; payload: string }
   | { type: "delete-location"; payload: string }
   | { type: "delete-entry"; payload: Entry }
+  | { type: "set-fee"; payload: number }
   | { type: "clear" };
 
 function reducer(data: Data, action: Action) {
@@ -132,6 +133,11 @@ function reducer(data: Data, action: Action) {
         deleteEntry(draft, action.payload);
         return draft;
       });
+    case "set-fee":
+      return immutable(data, (draft) => {
+        setFee(draft, action.payload);
+        return draft;
+      });
     case "clear":
       return createEmptyData();
     default:
@@ -144,7 +150,6 @@ export function App() {
   const [query, setQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [fee, setFee] = useState(0.085);
   const formRef = useRef<FormHandle>(null);
 
   const itemHistoryModalRef = useRef<HTMLDialogElement>(null);
@@ -210,10 +215,11 @@ export function App() {
 
   const handleFeeInput = (event: InputEvent<HTMLInputElement>) => {
     const value = parseFloat(event.currentTarget.value);
+
     if (!isNaN(value)) {
-      setFee(value / 100);
+      dispatch({ type: "set-fee", payload: value / 100 });
     } else {
-      setFee(0);
+      dispatch({ type: "set-fee", payload: 0 });
     }
   };
 
@@ -221,9 +227,9 @@ export function App() {
     return [...data.items]
       .filter((item) => matchItem(query, item))
       .sort((a, b) => {
-        return getNetProfit(data, b, fee) - getNetProfit(data, a, fee);
+        return getNetProfit(data, b) - getNetProfit(data, a);
       });
-  }, [data, query, fee]);
+  }, [data, query]);
 
   const itemHistoryEntries = useMemo(() => {
     return data.entries
@@ -271,7 +277,7 @@ export function App() {
             <div className="flex min-w-0">
               <input
                 type="number"
-                value={(fee * 100).toFixed(1)}
+                value={data.fee * 100}
                 onInput={handleFeeInput}
                 step={0.5}
                 min={0}
@@ -314,10 +320,10 @@ export function App() {
                 <span
                   className={c(
                     "text-xs",
-                    getNetProfit(data, item, fee) >= 0 ? "text-lime-400" : "text-red-400",
+                    getNetProfit(data, item) >= 0 ? "text-lime-400" : "text-red-400",
                   )}
                 >
-                  {fmt.number(getNetProfit(data, item, fee), {
+                  {fmt.number(getNetProfit(data, item), {
                     maximumFractionDigits: 0,
                     signDisplay: "always",
                   })}
@@ -337,38 +343,42 @@ export function App() {
                   key={`${item}-${location}`}
                   onClick={() => handlePrefill(location, item, local)}
                 >
-                  <div className="grid grid-cols-2 gap-1 items-center">
-                    <div className="justify-self-end flex gap-1 items-center">
-                      <div
-                        className="text-xs text-sky-400"
-                        title="Premium compared to the lowest sell price across markets."
-                      >
-                        {gap.bid !== 0
-                          ? fmt.number(gap.bid / global.min.bid, {
-                              style: "percent",
-                              signDisplay: "always",
-                            })
-                          : null}
+                  {local.timestamp > 0 ? (
+                    <div className="grid grid-cols-2 gap-1 items-center">
+                      <div className="justify-self-end flex gap-1 items-center">
+                        <div
+                          className="text-xs text-sky-400"
+                          title="Premium compared to the lowest sell price across markets."
+                        >
+                          {gap.bid !== 0
+                            ? fmt.number(gap.bid / global.min.bid, {
+                                style: "percent",
+                                signDisplay: "always",
+                              })
+                            : null}
+                        </div>
+
+                        <div title="Sell price">{fmt.number(local.bid)}</div>
                       </div>
 
-                      <div title="Sell price">{fmt.number(local.bid)}</div>
-                    </div>
+                      <div className="flex gap-1 items-center">
+                        <div title="Buy price">{fmt.number(local.ask)}</div>
 
-                    <div className="flex gap-1 items-center">
-                      <div title="Buy price">{fmt.number(local.ask)}</div>
-
-                      <div
-                        className="text-xs text-lime-400"
-                        title="Discount compared to the highest buy price across markets."
-                      >
-                        {gap.ask !== 0
-                          ? fmt.number(gap.ask / global.max.ask, {
-                              style: "percent",
-                            })
-                          : null}
+                        <div
+                          className="text-xs text-lime-400"
+                          title="Discount compared to the highest buy price across markets."
+                        >
+                          {gap.ask !== 0
+                            ? fmt.number(gap.ask / global.max.ask, {
+                                style: "percent",
+                              })
+                            : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    "-"
+                  )}
                 </div>
               );
             })}
