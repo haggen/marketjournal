@@ -296,7 +296,7 @@ export function App() {
                 openLocationHistory(location);
               }}
             >
-              {location}
+              <span className="truncate">{location}</span>
             </div>
           ))}
         </div>
@@ -314,7 +314,7 @@ export function App() {
                 openItemHistory(item);
               }}
             >
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 min-w-0">
                 <span className="truncate">{item}</span>
 
                 <span
