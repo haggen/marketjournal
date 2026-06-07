@@ -40,7 +40,7 @@ export type Data = {
 
 export function createEmptyData(): Data {
   return {
-    version: 7,
+    version: 8,
     fee: 0.085,
     entries: [],
     items: [],
@@ -89,6 +89,21 @@ export function migrate(data: any): Data {
     if (data.version === 6) {
       data.fee = 0.085;
       data.version = 7;
+    }
+
+    if (data.version === 7) {
+      for (const item of data.items) {
+        if (!data.entries.some((entry: { item: string }) => item === entry.item)) {
+          deleteItem(data, item);
+        }
+      }
+      for (const location of data.locations) {
+        if (!data.entries.some((entry: { location: string }) => location === entry.location)) {
+          deleteLocation(data, location);
+        }
+      }
+
+      data.version = 8;
     }
 
     return data;
@@ -185,7 +200,15 @@ export function addEntry(data: Data, entry: Entry) {
 
 export function deleteEntry(data: Data, entry: Entry) {
   data.entries = data.entries.filter(({ timestamp }) => timestamp !== entry.timestamp);
-  delete data.market.local[getLocalMarketKey(entry.item, entry.location)];
+
+  if (!data.entries.some(({ item }) => item === entry.item)) {
+    deleteItem(data, entry.item);
+  }
+
+  if (!data.entries.some(({ location }) => location === entry.location)) {
+    deleteLocation(data, entry.location);
+  }
+
   recompileMarkets(data, entry.item);
 }
 
