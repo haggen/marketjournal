@@ -5,7 +5,7 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={c(
-        "flex items-center h-9 px-1 text-white placeholder-white/50 rounded border [border-style:inset] border-stone-700 bg-stone-700 focus:bg-stone-800",
+        "flex items-center h-9 px-2 text-white placeholder-white/50 bg-black/30 focus:bg-black/50",
         className,
       )}
       {...props}

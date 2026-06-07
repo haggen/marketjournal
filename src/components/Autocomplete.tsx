@@ -40,9 +40,7 @@ const Context = createContext<Context | null>(null);
 function useAutocomplete() {
   const context = useContext(Context);
   if (!context) {
-    throw new Error(
-      "Autocomplete components must be used within Autocomplete.Root",
-    );
+    throw new Error("Autocomplete components must be used within Autocomplete.Root");
   }
   return context;
 }
@@ -134,10 +132,7 @@ function AutocompleteRoot({
     update({
       query,
       open: true,
-      highlighted: Math.max(
-        -1,
-        Math.min(state.highlighted, options.length - 1),
-      ),
+      highlighted: Math.max(-1, Math.min(state.highlighted, options.length - 1)),
     });
   };
 
@@ -154,17 +149,12 @@ function AutocompleteRoot({
     });
   };
 
-  const handleKeyDown = (event: {
-    key: string;
-    preventDefault: () => void;
-  }) => {
+  const handleKeyDown = (event: { key: string; preventDefault: () => void }) => {
     if (event.key === "ArrowDown") {
       if (state.open) {
         event.preventDefault();
         handleHighlight(state.highlighted + 1);
-      } else if (
-        inputRef.current?.selectionStart === inputRef.current?.value.length
-      ) {
+      } else if (inputRef.current?.selectionStart === inputRef.current?.value.length) {
         handleOpen();
       }
     } else if (event.key === "ArrowUp") {
@@ -214,8 +204,7 @@ function AutocompleteRoot({
 }
 
 function AutocompleteInput(props: ComponentProps<"input">) {
-  const { inputRef, handleOpen, handleInput, handleKeyDown } =
-    useAutocomplete();
+  const { inputRef, handleOpen, handleInput, handleKeyDown } = useAutocomplete();
 
   return (
     <Input
@@ -229,20 +218,13 @@ function AutocompleteInput(props: ComponentProps<"input">) {
 }
 
 function AutocompleteList() {
-  const {
-    floatingRef,
-    floatingStyles,
-    listRef,
-    options,
-    state,
-    handleHighlight,
-    handleComplete,
-  } = useAutocomplete();
+  const { floatingRef, floatingStyles, listRef, options, state, handleHighlight, handleComplete } =
+    useAutocomplete();
 
   return (
     <div
       ref={floatingRef}
-      className="mt-1 bg-orange-800 rounded-xs z-10"
+      className="mt-1 bg-orange-800 z-10"
       style={floatingStyles}
       hidden={!state.open}
     >
@@ -250,14 +232,14 @@ function AutocompleteList() {
         ref={listRef}
         tabIndex={-1}
         role="listbox"
-        className="p-1 overflow-y-auto overscroll-contain scroll-py-1 max-h-62 scrollbar-thin"
+        className="overflow-y-auto overscroll-contain scroll-py-1 max-h-62 min-w-3xs scrollbar-thin"
       >
         {options.length > 0 ? (
           options.map((option, index) => (
             <div
               key={option}
               role="option"
-              className="px-1 cursor-default rounded-xs data-highlighted:bg-black/10 data-highlighted:text-white"
+              className="px-2 flex items-center h-9 cursor-default data-highlighted:bg-black/10 data-highlighted:text-white"
               onMouseMove={() => handleHighlight(index)}
               onMouseDown={() => handleComplete(option)}
               data-highlighted={state.highlighted === index || undefined}

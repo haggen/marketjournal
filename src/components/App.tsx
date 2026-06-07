@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  type InputEvent,
-  type Ref,
-} from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type InputEvent, type Ref } from "react";
 import {
   addEntry,
   createEmptyData,
@@ -50,68 +42,59 @@ function HistoryModal({
 
   return (
     <Modal ref={setDialogRef}>
-      <div className="flex flex-col gap-2 p-4 max-h-96 w-xl">
-        <header className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-4 p-4 max-h-96 w-2xl">
+        <header className="text-center">
           <h1 className="text-xl font-bold truncate">{subject}</h1>
-
-          <Button
-            className="text-xl px-2"
-            onClick={() => {
-              dialogRef.current?.close();
-            }}
-          >
-            &times;
-          </Button>
         </header>
 
-        <div className="flex-1 bg-stone-700 rounded overflow-y-auto scrollbar-gutter-stable">
+        <div className="flex-1 bg-taupe-700 overflow-y-auto scrollbar-gutter-stable">
           {entries.length > 0 ? (
-            <div role="grid" className="text-xs">
+            <div role="grid">
               {entries.map((entry) => (
                 <div
                   key={entry.timestamp}
                   role="row"
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] h-8 items-center even:bg-black/10 hover:bg-orange-700/20 hover:text-white"
+                  className="grid grid-cols-[1fr_1fr_1fr_auto] h-9 items-center even:bg-black/10 hover:bg-orange-700/20 hover:text-white"
                 >
-                  <div className="p-1 truncate">{getRelatedValue(entry)}</div>
-                  <div className="p-1 truncate justify-self-center">
+                  <div className="p-2 truncate">{getRelatedValue(entry)}</div>
+                  <div className="p-2 truncate justify-self-center">
                     {fmt.datetime(entry.timestamp, {
                       dateStyle: "full",
                       timeStyle: "short",
                     })}
                   </div>
-                  <div className="p-1 flex gap-1 justify-self-center">
+                  <div className="p-2 flex gap-2 justify-self-center">
                     <div>{fmt.number(entry.bid)}</div>
                     <div>{fmt.number(entry.ask)}</div>
                   </div>
-                  <div className="p-1 justify-self-center">
+                  <div className="p-2 justify-self-center">
                     <Button
+                      className="text-xl leading-none"
                       onClick={() => {
                         onDeleteEntry(entry);
                       }}
                     >
-                      Remove
+                      &times;
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-white/50 py-8">
-              No entries found.
-            </div>
+            <div className="text-center text-white/50 py-8">No entries found.</div>
           )}
         </div>
 
-        {/*<footer className="flex justify-center">
+        <footer className="flex justify-center">
           <Button
+            variant="primary"
             onClick={() => {
-              onDeleteSubject(subject);
+              dialogRef.current?.close();
             }}
           >
-            Delete all
+            Close
           </Button>
-        </footer>*/}
+        </footer>
       </div>
     </Modal>
   );
@@ -175,11 +158,7 @@ export function App() {
     dispatch({ type: "add", payload });
   };
 
-  const handlePrefill = (
-    location: string,
-    item: string,
-    price?: { bid: number; ask: number },
-  ) => {
+  const handlePrefill = (location: string, item: string, price?: { bid: number; ask: number }) => {
     if (formRef.current) {
       formRef.current.prefill({
         location,
@@ -275,18 +254,9 @@ export function App() {
         lists={{ items: data.items, locations: data.locations }}
       />
 
-      <div
-        role="grid"
-        className="grid overflow-auto cursor-default text-sm rounded border-2 [border-style:groove] border-stone-700"
-      >
-        <div
-          role="row"
-          className="grid grid-flow-col auto-cols-fr sticky top-0 bg-stone-500"
-        >
-          <div
-            role="cell"
-            className="flex justify-between px-2 h-9 items-center gap-1"
-          >
+      <div role="grid" className="grid overflow-auto cursor-default bg-taupe-600">
+        <div role="row" className="grid grid-flow-col auto-cols-fr sticky top-0 bg-taupe-500">
+          <div role="cell" className="flex justify-between px-2 h-9 items-center gap-1">
             <div className="flex-1 flex gap-1">
               <input
                 type="search"
@@ -295,9 +265,7 @@ export function App() {
                 onChange={(event) => setQuery(event.target.value)}
                 className="field-sizing-content placeholder-shown:flex-1 blank:flex-1 placeholder-white/50"
               />
-              {query === "" ? null : (
-                <button onClick={() => setQuery("")}>&times;</button>
-              )}
+              {query === "" ? null : <button onClick={() => setQuery("")}>&times;</button>}
             </div>
 
             <div className="flex min-w-0">
@@ -346,9 +314,7 @@ export function App() {
                 <span
                   className={c(
                     "text-xs",
-                    getNetProfit(data, item, fee) >= 0
-                      ? "text-lime-400"
-                      : "text-red-400",
+                    getNetProfit(data, item, fee) >= 0 ? "text-lime-400" : "text-red-400",
                   )}
                 >
                   {fmt.number(getNetProfit(data, item, fee), {
