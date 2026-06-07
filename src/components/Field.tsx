@@ -14,7 +14,7 @@ export function Field({
 
   return (
     <div className={c("flex flex-col", className)}>
-      <label htmlFor={id} className="text-xs uppercase leading-loose">
+      <label htmlFor={id} className="text-xs leading-loose">
         {label}
       </label>
       {children({ id })}

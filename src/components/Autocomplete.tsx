@@ -40,7 +40,9 @@ const Context = createContext<Context | null>(null);
 function useAutocomplete() {
   const context = useContext(Context);
   if (!context) {
-    throw new Error("Autocomplete components must be used within Autocomplete.Root");
+    throw new Error(
+      "Autocomplete components must be used within Autocomplete.Root",
+    );
   }
   return context;
 }
@@ -132,7 +134,10 @@ function AutocompleteRoot({
     update({
       query,
       open: true,
-      highlighted: Math.max(-1, Math.min(state.highlighted, options.length - 1)),
+      highlighted: Math.max(
+        -1,
+        Math.min(state.highlighted, options.length - 1),
+      ),
     });
   };
 
@@ -149,12 +154,17 @@ function AutocompleteRoot({
     });
   };
 
-  const handleKeyDown = (event: { key: string; preventDefault: () => void }) => {
+  const handleKeyDown = (event: {
+    key: string;
+    preventDefault: () => void;
+  }) => {
     if (event.key === "ArrowDown") {
       if (state.open) {
         event.preventDefault();
         handleHighlight(state.highlighted + 1);
-      } else if (inputRef.current?.selectionStart === inputRef.current?.value.length) {
+      } else if (
+        inputRef.current?.selectionStart === inputRef.current?.value.length
+      ) {
         handleOpen();
       }
     } else if (event.key === "ArrowUp") {
@@ -204,7 +214,8 @@ function AutocompleteRoot({
 }
 
 function AutocompleteInput(props: ComponentProps<"input">) {
-  const { inputRef, handleOpen, handleInput, handleKeyDown } = useAutocomplete();
+  const { inputRef, handleOpen, handleInput, handleKeyDown } =
+    useAutocomplete();
 
   return (
     <Input
@@ -218,13 +229,20 @@ function AutocompleteInput(props: ComponentProps<"input">) {
 }
 
 function AutocompleteList() {
-  const { floatingRef, floatingStyles, listRef, options, state, handleHighlight, handleComplete } =
-    useAutocomplete();
+  const {
+    floatingRef,
+    floatingStyles,
+    listRef,
+    options,
+    state,
+    handleHighlight,
+    handleComplete,
+  } = useAutocomplete();
 
   return (
     <div
       ref={floatingRef}
-      className="mt-1 bg-orange-800 rounded-xs hard-shadow z-10"
+      className="mt-1 bg-orange-800 rounded-xs z-10"
       style={floatingStyles}
       hidden={!state.open}
     >

@@ -12,7 +12,7 @@ export function Modal({ ref, className, ...props }: ComponentProps<"dialog">) {
     <dialog
       ref={ref}
       className={c(
-        "m-auto text-current bg-stone-600 rounded-xs hard-shadow backdrop:bg-black/50",
+        "m-auto text-current bg-stone-600 rounded-xs backdrop:bg-black/50",
         className,
       )}
       {...props}

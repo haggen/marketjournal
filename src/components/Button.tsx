@@ -3,7 +3,8 @@ import type { ComponentProps } from "react";
 
 const variants = {
   text: "",
-  primary: "py-1 px-6 text-orange-100 bg-orange-700 hover:bg-orange-600 rounded-xs hard-shadow",
+  primary:
+    "flex-inline items-center h-9 px-6 text-orange-100 bg-orange-700 border [border-style:outset] border-orange-700 hover:bg-orange-600 rounded",
 };
 
 export function Button({
@@ -15,7 +16,11 @@ export function Button({
   return (
     <button
       type={type}
-      className={c("font-bold hover:text-white active:opacity-50", variants[variant], className)}
+      className={c(
+        "font-bold hover:text-white active:opacity-50",
+        variants[variant],
+        className,
+      )}
       {...props}
     />
   );

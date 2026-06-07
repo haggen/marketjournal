@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type InputEvent, type Ref } from "react";
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type InputEvent,
+  type Ref,
+} from "react";
 import {
   addEntry,
   createEmptyData,
@@ -47,7 +55,7 @@ function HistoryModal({
           <h1 className="text-xl font-bold truncate">{subject}</h1>
 
           <Button
-            className="text-xl px-4"
+            className="text-xl px-2"
             onClick={() => {
               dialogRef.current?.close();
             }}
@@ -56,14 +64,14 @@ function HistoryModal({
           </Button>
         </header>
 
-        <div className="flex-1 bg-stone-700 rounded-xs hard-shadow-inset overflow-y-auto scrollbar-gutter-stable">
+        <div className="flex-1 bg-stone-700 rounded overflow-y-auto scrollbar-gutter-stable">
           {entries.length > 0 ? (
-            <div role="grid">
+            <div role="grid" className="text-xs">
               {entries.map((entry) => (
                 <div
                   key={entry.timestamp}
                   role="row"
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] items-center even:bg-black/10 hover:bg-orange-500/20 hover:text-white"
+                  className="grid grid-cols-[1fr_1fr_1fr_auto] h-8 items-center even:bg-black/10 hover:bg-orange-700/20 hover:text-white"
                 >
                   <div className="p-1 truncate">{getRelatedValue(entry)}</div>
                   <div className="p-1 truncate justify-self-center">
@@ -76,25 +84,26 @@ function HistoryModal({
                     <div>{fmt.number(entry.bid)}</div>
                     <div>{fmt.number(entry.ask)}</div>
                   </div>
-                  <div className="justify-self-center">
+                  <div className="p-1 justify-self-center">
                     <Button
-                      className="px-4"
                       onClick={() => {
                         onDeleteEntry(entry);
                       }}
                     >
-                      &times;
+                      Remove
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-white/50 py-8">No entries found.</div>
+            <div className="text-center text-white/50 py-8">
+              No entries found.
+            </div>
           )}
         </div>
 
-        <footer className="flex justify-center">
+        {/*<footer className="flex justify-center">
           <Button
             onClick={() => {
               onDeleteSubject(subject);
@@ -102,7 +111,7 @@ function HistoryModal({
           >
             Delete all
           </Button>
-        </footer>
+        </footer>*/}
       </div>
     </Modal>
   );
@@ -166,7 +175,11 @@ export function App() {
     dispatch({ type: "add", payload });
   };
 
-  const handlePrefill = (location: string, item: string, price?: { bid: number; ask: number }) => {
+  const handlePrefill = (
+    location: string,
+    item: string,
+    price?: { bid: number; ask: number },
+  ) => {
     if (formRef.current) {
       formRef.current.prefill({
         location,
@@ -262,12 +275,18 @@ export function App() {
         lists={{ items: data.items, locations: data.locations }}
       />
 
-      <div role="grid" className="grid overflow-auto cursor-default">
+      <div
+        role="grid"
+        className="grid overflow-auto cursor-default text-sm rounded border-2 [border-style:groove] border-stone-700"
+      >
         <div
           role="row"
-          className="grid grid-flow-col auto-cols-fr sticky top-0 bg-stone-500 rounded-xs hard-shadow"
+          className="grid grid-flow-col auto-cols-fr sticky top-0 bg-stone-500"
         >
-          <div role="cell" className="flex justify-between p-1 rounded-xs gap-1">
+          <div
+            role="cell"
+            className="flex justify-between px-2 h-9 items-center gap-1"
+          >
             <div className="flex-1 flex gap-1">
               <input
                 type="search"
@@ -276,7 +295,9 @@ export function App() {
                 onChange={(event) => setQuery(event.target.value)}
                 className="field-sizing-content placeholder-shown:flex-1 blank:flex-1 placeholder-white/50"
               />
-              {query === "" ? null : <button onClick={() => setQuery("")}>&times;</button>}
+              {query === "" ? null : (
+                <button onClick={() => setQuery("")}>&times;</button>
+              )}
             </div>
 
             <div className="flex min-w-0">
@@ -295,7 +316,7 @@ export function App() {
           {data.locations.map((location) => (
             <div
               role="cell"
-              className="p-1 text-center rounded-xs hover:bg-orange-500/20 hover:text-white"
+              className="flex px-2 h-9 items-center justify-center hover:bg-orange-700/50 hover:text-white"
               key={location}
               onClick={() => {
                 openLocationHistory(location);
@@ -309,12 +330,12 @@ export function App() {
         {items.map((item) => (
           <div
             role="row"
-            className="grid grid-flow-col auto-cols-fr rounded-xs odd:bg-black/10 hover:bg-black/20"
+            className="grid grid-flow-col auto-cols-fr odd:bg-black/10 hover:bg-white/10"
             key={item}
           >
             <div
               role="cell"
-              className="p-1 rounded-xs hover:bg-orange-500/20 hover:text-white"
+              className="px-2 h-9 flex items-center hover:bg-orange-700/50 hover:text-white"
               onClick={() => {
                 openItemHistory(item);
               }}
@@ -325,7 +346,9 @@ export function App() {
                 <span
                   className={c(
                     "text-xs",
-                    getNetProfit(data, item, fee) >= 0 ? "text-lime-400" : "text-red-400",
+                    getNetProfit(data, item, fee) >= 0
+                      ? "text-lime-400"
+                      : "text-red-400",
                   )}
                 >
                   {fmt.number(getNetProfit(data, item, fee), {
@@ -344,12 +367,12 @@ export function App() {
               return (
                 <div
                   role="cell"
-                  className="p-1 rounded-xs hover:bg-orange-500/20 hover:text-white"
+                  className="px-2 h-9 flex items-center justify-center hover:bg-orange-700/50 hover:text-white"
                   key={`${item}-${location}`}
                   onClick={() => handlePrefill(location, item, local)}
                 >
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <div className="justify-self-end flex gap-2 items-center">
+                  <div className="grid grid-cols-2 gap-1 items-center">
+                    <div className="justify-self-end flex gap-1 items-center">
                       <div
                         className="text-xs text-sky-400"
                         title="Premium compared to the lowest sell price across markets."
@@ -365,7 +388,7 @@ export function App() {
                       <div title="Sell price">{fmt.number(local.bid)}</div>
                     </div>
 
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-1 items-center">
                       <div title="Buy price">{fmt.number(local.ask)}</div>
 
                       <div

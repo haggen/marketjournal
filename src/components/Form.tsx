@@ -84,7 +84,7 @@ export function Form({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="flex p-2 gap-2 scroll-p-4 bg-stone-500 rounded-xs hard-shadow"
+      className="flex p-2 gap-2 scroll-p-4 bg-stone-500 border-2 [border-style:groove] border-stone-500 rounded"
     >
       <Autocomplete.Root data={lists.locations}>
         <Field label="Market location" className="flex-1">
@@ -121,7 +121,16 @@ export function Form({
       </Autocomplete.Root>
 
       <Field label="Sell price (highest buy order)" className="flex-1">
-        {({ id }) => <Input id={id} type="number" name="bid" min="1" required placeholder="99" />}
+        {({ id }) => (
+          <Input
+            id={id}
+            type="number"
+            name="bid"
+            min="1"
+            required
+            placeholder="99"
+          />
+        )}
       </Field>
 
       <Field label="Buy price (lowest sell order)" className="flex-1">
